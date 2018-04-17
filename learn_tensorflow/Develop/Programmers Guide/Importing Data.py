@@ -233,12 +233,8 @@ def _resize_function(image_decoded, label):
 filenames = ["/var/data/image1.jpg", "/var/data/image2.jpg", ...]
 labels = [0, 37, 29, 1, ...]
 dataset = tf.data.Dataset.from_tensor_slices((filenames, labels))
-dataset = dataset.map(
-    lambda filename, label: tuple(tf.py_func(
-        _read_py_function, [filename, label], [tf.uint8, label.dtype])))
+dataset = dataset.map(lambda filename, label: tuple(tf.py_func(_read_py_function, [filename, label], [tf.uint8, label.dtype])))
 dataset = dataset.map(_resize_function)
-
-#Batching dataset elements
 
 inc_dataset = tf.data.Dataset.range(100)
 dec_dataset = tf.data.Dataset.range(0, -100, -1)
@@ -260,8 +256,6 @@ print(sess.run(next_element))  # ==> [[4, 4, 4, 4, 0, 0, 0],
                                #      [5, 5, 5, 5, 5, 0, 0],
                                #      [6, 6, 6, 6, 6, 6, 0],
                                #      [7, 7, 7, 7, 7, 7, 7]]
-
-#Training workflows
 
 filenames = ["/var/data/file1.tfrecord", "/var/data/file2.tfrecord"]
 dataset = tf.data.TFRecordDataset(filenames)
