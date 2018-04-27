@@ -4,7 +4,7 @@ spark=pyspark.sql.SparkSession.builder.getOrCreate()
 
 from pyspark.ml.classification import LogisticRegression
 # Load training data
-training = spark.read.format("libsvm").load("data/mllib/sample_libsvm_data.txt")
+training = spark.read.format("libsvm").load("file:///usr/local/spark/data/mllib/sample_libsvm_data.txt")
 lr = LogisticRegression(maxIter=10, regParam=0.3, elasticNetParam=0.8)
 # Fit the model
 lrModel = lr.fit(training)
@@ -43,7 +43,7 @@ from pyspark.ml.classification import LogisticRegression
 training = spark \
     .read \
     .format("libsvm") \
-    .load("data/mllib/sample_multiclass_classification_data.txt")
+    .load("file:///usr/local/spark/data/mllib/sample_multiclass_classification_data.txt")
 lr = LogisticRegression(maxIter=10, regParam=0.3, elasticNetParam=0.8)
 # Fit the model
 lrModel = lr.fit(training)
@@ -86,7 +86,7 @@ from pyspark.ml.classification import DecisionTreeClassifier
 from pyspark.ml.feature import StringIndexer, VectorIndexer
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 # Load the data stored in LIBSVM format as a DataFrame.
-data = spark.read.format("libsvm").load("data/mllib/sample_libsvm_data.txt")
+data = spark.read.format("libsvm").load("file:///usr/local/spark/data/mllib/sample_libsvm_data.txt")
 # Index labels, adding metadata to the label column.
 # Fit on whole dataset to include all labels in index.
 labelIndexer = StringIndexer(inputCol="label", outputCol="indexedLabel").fit(data)
@@ -120,7 +120,7 @@ from pyspark.ml.classification import RandomForestClassifier
 from pyspark.ml.feature import IndexToString, StringIndexer, VectorIndexer
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 # Load and parse the data file, converting it to a DataFrame.
-data = spark.read.format("libsvm").load("data/mllib/sample_libsvm_data.txt")
+data = spark.read.format("libsvm").load("file:///usr/local/spark/data/mllib/sample_libsvm_data.txt")
 # Index labels, adding metadata to the label column.
 # Fit on whole dataset to include all labels in index.
 labelIndexer = StringIndexer(inputCol="label", outputCol="indexedLabel").fit(data)
@@ -154,7 +154,7 @@ from pyspark.ml.classification import GBTClassifier
 from pyspark.ml.feature import StringIndexer, VectorIndexer
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 # Load and parse the data file, converting it to a DataFrame.
-data = spark.read.format("libsvm").load("data/mllib/sample_libsvm_data.txt")
+data = spark.read.format("libsvm").load("file:///usr/local/spark/data/mllib/sample_libsvm_data.txt")
 # Index labels, adding metadata to the label column.
 # Fit on whole dataset to include all labels in index.
 labelIndexer = StringIndexer(inputCol="label", outputCol="indexedLabel").fit(data)
@@ -184,7 +184,7 @@ print(gbtModel)  # summary only
 from pyspark.ml.classification import MultilayerPerceptronClassifier
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 # Load training data
-data = spark.read.format("libsvm").load("data/mllib/sample_multiclass_classification_data.txt")
+data = spark.read.format("libsvm").load("file:///usr/local/spark/data/mllib/sample_multiclass_classification_data.txt")
 # Split the data into train and test
 splits = data.randomSplit([0.6, 0.4], 1234)
 train = splits[0]
@@ -205,7 +205,7 @@ print("Test set accuracy = " + str(evaluator.evaluate(predictionAndLabels)))
 
 from pyspark.ml.classification import LinearSVC
 # Load training data
-training = spark.read.format("libsvm").load("data/mllib/sample_libsvm_data.txt")
+training = spark.read.format("libsvm").load("file:///usr/local/spark/data/mllib/sample_libsvm_data.txt")
 lsvc = LinearSVC(maxIter=10, regParam=0.1)
 # Fit the model
 lsvcModel = lsvc.fit(training)
@@ -216,7 +216,7 @@ print("Intercept: " + str(lsvcModel.intercept))
 from pyspark.ml.classification import LogisticRegression, OneVsRest
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 # load data file.
-inputData = spark.read.format("libsvm").load("data/mllib/sample_multiclass_classification_data.txt")
+inputData = spark.read.format("libsvm").load("file:///usr/local/spark/data/mllib/sample_multiclass_classification_data.txt")
 # generate the train/test split.
 (train, test) = inputData.randomSplit([0.8, 0.2])
 # instantiate the base classifier.
@@ -236,7 +236,7 @@ print("Test Error = %g" % (1.0 - accuracy))
 from pyspark.ml.classification import NaiveBayes
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 # Load training data
-data = spark.read.format("libsvm").load("data/mllib/sample_libsvm_data.txt")
+data = spark.read.format("libsvm").load("file:///usr/local/spark/data/mllib/sample_libsvm_data.txt")
 # Split the data into train and test
 splits = data.randomSplit([0.6, 0.4], 1234)
 train = splits[0]
@@ -255,7 +255,7 @@ print("Test set accuracy = " + str(accuracy))
 
 from pyspark.ml.regression import LinearRegression
 # Load training data
-training = spark.read.format("libsvm").load("data/mllib/sample_linear_regression_data.txt")
+training = spark.read.format("libsvm").load("file:///usr/local/spark/data/mllib/sample_linear_regression_data.txt")
 lr = LinearRegression(maxIter=10, regParam=0.3, elasticNetParam=0.8)
 # Fit the model
 lrModel = lr.fit(training)
@@ -272,7 +272,7 @@ print("r2: %f" % trainingSummary.r2)
 
 from pyspark.ml.regression import GeneralizedLinearRegression
 # Load training data
-dataset = spark.read.format("libsvm").load("data/mllib/sample_linear_regression_data.txt")
+dataset = spark.read.format("libsvm").load("file:///usr/local/spark/data/mllib/sample_linear_regression_data.txt")
 glr = GeneralizedLinearRegression(family="gaussian", link="identity", maxIter=10, regParam=0.3)
 # Fit the model
 model = glr.fit(dataset)
@@ -298,7 +298,7 @@ from pyspark.ml.regression import DecisionTreeRegressor
 from pyspark.ml.feature import VectorIndexer
 from pyspark.ml.evaluation import RegressionEvaluator
 # Load the data stored in LIBSVM format as a DataFrame.
-data = spark.read.format("libsvm").load("data/mllib/sample_libsvm_data.txt")
+data = spark.read.format("libsvm").load("file:///usr/local/spark/data/mllib/sample_libsvm_data.txt")
 # Automatically identify categorical features, and index them.
 # We specify maxCategories so features with > 4 distinct values are treated as continuous.
 featureIndexer =VectorIndexer(inputCol="features", outputCol="indexedFeatures", maxCategories=4).fit(data)
@@ -328,7 +328,7 @@ from pyspark.ml.regression import RandomForestRegressor
 from pyspark.ml.feature import VectorIndexer
 from pyspark.ml.evaluation import RegressionEvaluator
 # Load and parse the data file, converting it to a DataFrame.
-data = spark.read.format("libsvm").load("data/mllib/sample_libsvm_data.txt")
+data = spark.read.format("libsvm").load("file:///usr/local/spark/data/mllib/sample_libsvm_data.txt")
 # Automatically identify categorical features, and index them.
 # Set maxCategories so features with > 4 distinct values are treated as continuous.
 featureIndexer =VectorIndexer(inputCol="features", outputCol="indexedFeatures", maxCategories=4).fit(data)
@@ -357,7 +357,7 @@ from pyspark.ml.regression import GBTRegressor
 from pyspark.ml.feature import VectorIndexer
 from pyspark.ml.evaluation import RegressionEvaluator
 # Load and parse the data file, converting it to a DataFrame.
-data = spark.read.format("libsvm").load("data/mllib/sample_libsvm_data.txt")
+data = spark.read.format("libsvm").load("file:///usr/local/spark/data/mllib/sample_libsvm_data.txt")
 # Automatically identify categorical features, and index them.
 # Set maxCategories so features with > 4 distinct values are treated as continuous.
 featureIndexer =VectorIndexer(inputCol="features", outputCol="indexedFeatures", maxCategories=4).fit(data)
@@ -399,7 +399,7 @@ model.transform(training).show(truncate=False)
 
 from pyspark.ml.regression import IsotonicRegression
 # Loads data.
-dataset = spark.read.format("libsvm").load("data/mllib/sample_isotonic_regression_libsvm_data.txt")
+dataset = spark.read.format("libsvm").load("file:///usr/local/spark/data/mllib/sample_isotonic_regression_libsvm_data.txt")
 # Trains an isotonic regression model.
 model = IsotonicRegression().fit(dataset)
 print("Boundaries in increasing order: %s\n" % str(model.boundaries))

@@ -175,7 +175,7 @@ encoded = model.transform(df)
 encoded.show()
 
 from pyspark.ml.feature import VectorIndexer
-data = spark.read.format("libsvm").load("data/mllib/sample_libsvm_data.txt")
+data = spark.read.format("libsvm").load("file:///usr/local/spark/data/mllib/sample_libsvm_data.txt")
 indexer = VectorIndexer(inputCol="features", outputCol="indexed", maxCategories=10)
 indexerModel = indexer.fit(data)
 categoricalFeatures = indexerModel.categoryMaps
@@ -203,7 +203,7 @@ print("Normalized using L^inf norm")
 lInfNormData.show()
 
 from pyspark.ml.feature import StandardScaler
-dataFrame = spark.read.format("libsvm").load("data/mllib/sample_libsvm_data.txt")
+dataFrame = spark.read.format("libsvm").load("file:///usr/local/spark/data/mllib/sample_libsvm_data.txt")
 scaler = StandardScaler(inputCol="features", outputCol="scaledFeatures",withStd=True, withMean=False)
 # Compute summary statistics by fitting the StandardScaler
 scalerModel = scaler.fit(dataFrame)

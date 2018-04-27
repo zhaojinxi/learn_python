@@ -5,7 +5,7 @@ spark=pyspark.sql.SparkSession.builder.getOrCreate()
 from pyspark.ml.clustering import KMeans
 from pyspark.ml.evaluation import ClusteringEvaluator
 # Loads data.
-dataset = spark.read.format("libsvm").load("data/mllib/sample_kmeans_data.txt")
+dataset = spark.read.format("libsvm").load("file:///usr/local/spark/data/mllib/sample_kmeans_data.txt")
 # Trains a k-means model.
 kmeans = KMeans().setK(2).setSeed(1)
 model = kmeans.fit(dataset)
@@ -23,7 +23,7 @@ for center in centers:
 
 from pyspark.ml.clustering import LDA
 # Loads data.
-dataset = spark.read.format("libsvm").load("data/mllib/sample_lda_libsvm_data.txt")
+dataset = spark.read.format("libsvm").load("file:///usr/local/spark/data/mllib/sample_lda_libsvm_data.txt")
 # Trains a LDA model.
 lda = LDA(k=10, maxIter=10)
 model = lda.fit(dataset)
@@ -41,7 +41,7 @@ transformed.show(truncate=False)
 
 from pyspark.ml.clustering import BisectingKMeans
 # Loads data.
-dataset = spark.read.format("libsvm").load("data/mllib/sample_kmeans_data.txt")
+dataset = spark.read.format("libsvm").load("file:///usr/local/spark/data/mllib/sample_kmeans_data.txt")
 # Trains a bisecting k-means model.
 bkm = BisectingKMeans().setK(2).setSeed(1)
 model = bkm.fit(dataset)
@@ -56,7 +56,7 @@ for center in centers:
 
 from pyspark.ml.clustering import GaussianMixture
 # loads data
-dataset = spark.read.format("libsvm").load("data/mllib/sample_kmeans_data.txt")
+dataset = spark.read.format("libsvm").load("file:///usr/local/spark/data/mllib/sample_kmeans_data.txt")
 gmm = GaussianMixture().setK(2).setSeed(538009335)
 model = gmm.fit(dataset)
 print("Gaussians shown as a DataFrame: ")

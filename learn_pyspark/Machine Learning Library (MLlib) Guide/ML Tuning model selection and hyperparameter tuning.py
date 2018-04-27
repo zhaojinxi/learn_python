@@ -60,7 +60,7 @@ from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark.ml.regression import LinearRegression
 from pyspark.ml.tuning import ParamGridBuilder, TrainValidationSplit
 # Prepare training and test data.
-data = spark.read.format("libsvm").load("data/mllib/sample_linear_regression_data.txt")
+data = spark.read.format("libsvm").load("file:///usr/local/spark/data/mllib/sample_linear_regression_data.txt")
 train, test = data.randomSplit([0.9, 0.1], seed=12345)
 lr = LinearRegression(maxIter=10)
 # We use a ParamGridBuilder to construct a grid of parameters to search over.
