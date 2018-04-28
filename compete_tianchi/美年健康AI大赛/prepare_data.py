@@ -31,8 +31,23 @@ part1=pandas.read_pickle('data/part1p')
 part2=pandas.read_pickle('data/part2p')
 table_id1=part1['table_id'].drop_duplicates().sort_values().as_matrix().tolist()
 table_id2=part2['table_id'].drop_duplicates().sort_values().as_matrix().tolist()
+all=numpy.zeros([part1['vid'].drop_duplicates().shape[0], len(table_id1)])
+new_part1=pandas.DataFrame(all, index=part1['vid'].drop_duplicates().sort_values().as_matrix(), columns=table_id1)
 gb=part1.groupby(by=['vid'])
-new_part1=pandas.DataFrame(columns=['vid']+table_id1)
+t=1
 for x in gb:
     for k in range(x[1].shape[0]):
-        print(x[1].iloc[k]['table_id'])
+        new_part1.loc[x[0], x[1].iloc[k]['table_id']]=x[1].iloc[k]['field_result']
+    print(t)
+    t=t+1
+new_part1.to_pickle('data/new_part1')
+all=numpy.zeros([part2['vid'].drop_duplicates().shape[0], len(table_id2)])
+new_part2=pandas.DataFrame(all, index=part2['vid'].drop_duplicates().sort_values().as_matrix(), columns=table_id2)
+gb=part2.groupby(by=['vid'])
+t=1
+for x in gb:
+    for k in range(x[1].shape[0]):
+        new_part2.loc[x[0], x[1].iloc[k]['table_id']]=x[1].iloc[k]['field_result']
+    print(t)
+    t=t+1
+new_part2.to_pickle('data/new_part2')
