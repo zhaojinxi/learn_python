@@ -4,4 +4,8 @@
     "editor.wordWrap": "on",
     "editor.wrappingIndent": "indent",
     "python.pythonPath": "python",
+    "explorer.confirmDragAndDrop": false,
+    "git.enableSmartCommit": true,
+    "git.autofetch": true,
+    "git.confirmSync": false,
 }
