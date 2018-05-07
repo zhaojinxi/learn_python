@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np
 pd.set_option('max_colwidth',512)
 
-data_part1 = pd.read_csv("./data/meinian_round1_data_part1_20180408.txt", sep="$")
-data_part2 =pd.read_csv("./data/meinian_round1_data_part2_20180408.txt", sep='$')
+data_part1 = pd.read_csv("data/meinian_round1_data_part1_20180408.txt", sep="$")
+data_part2 =pd.read_csv("data/meinian_round1_data_part2_20180408.txt", sep='$')
 data = pd.concat([data_part1, data_part2])
 print(data.shape)
 # (8104368, 3)
