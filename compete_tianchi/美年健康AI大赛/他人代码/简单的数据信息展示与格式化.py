@@ -28,8 +28,7 @@ print(len(null_count[null_count<50000]))
 
 # 删除缺失值过多的数据
 data_keep_50000 = data_fmt_all .drop(labels=null_count [null_count >=50000].index,axis=1)
-data_keep_50000 .to_csv("data_keep_50000.csv")
-
+data_keep_50000.to_csv("data_keep_50000.csv")
 
 def getFeatureInfo(i, df，n=20):
    """
