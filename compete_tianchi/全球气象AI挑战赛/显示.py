@@ -5,9 +5,11 @@ import time
 import skimage.io
 import random
 import matplotlib.pyplot
+import numpy
 
-if __name__ == '__main__':
-    data_dir='/media/zhao/新加卷/data2'
+for _ in range(10):
+
+    data_dir='E:/SRAD2018/train'
     all_file=os.listdir(data_dir)
     pick_one_file=random.sample(all_file,1)[0]
     one_file=os.path.join(data_dir,pick_one_file)
@@ -26,8 +28,3 @@ if __name__ == '__main__':
             break
         time.sleep(0.1)
     cv2.destroyAllWindows()
-
-    for img_path in all_img_files:
-        im=skimage.io.imread(img_path)
-        skimage.io.imshow(im)
-        skimage.io.show()
