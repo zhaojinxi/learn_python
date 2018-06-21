@@ -9,7 +9,7 @@ import cv2
 import random
 import time
 
-data_dir='/media/zhao/新加卷/SRAD2018/train'
+data_dir='E:/SRAD2018/train'
 
 input_channel=1
 encode_channel1=8
@@ -119,35 +119,38 @@ for k in range(10001):
     all_image_dir.sort()
     all_image=[cv2.imread(x) for x in all_image_dir]
     all_image=numpy.array(all_image)
-
     for i in range(all_image.shape[0]):
-        Session.run(AdamOptimizer,feed_dict={input_image:all_image[i:i+1,:,:,0:1],is_train:True})
-        # Session.run(AdamOptimizer1,feed_dict={input_image:all_image[:,:,:,0:1]})
-        # Session.run(AdamOptimizer2,feed_dict={input_image:all_image[:,:,:,0:1]})
-        # Session.run(AdamOptimizer3,feed_dict={input_image:all_image[:,:,:,0:1]})
-        # Session.run(AdamOptimizer4,feed_dict={input_image:all_image[:,:,:,0:1]})
+        try:
+            Session.run(AdamOptimizer,feed_dict={input_image:all_image[i:i+1,:,:,0:1],is_train:True})
+            # Session.run(AdamOptimizer1,feed_dict={input_image:all_image[:,:,:,0:1]})
+            # Session.run(AdamOptimizer2,feed_dict={input_image:all_image[:,:,:,0:1]})
+            # Session.run(AdamOptimizer3,feed_dict={input_image:all_image[:,:,:,0:1]})
+            # Session.run(AdamOptimizer4,feed_dict={input_image:all_image[:,:,:,0:1]})
 
-    if k%100==0:
-        for image in all_image[:,:,:,0:1]:
-            cv2.imshow('true image', image)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-            time.sleep(0.1)
-        cv2.destroyAllWindows()
+            if k%100==0:
+                for image in all_image[:,:,:,0:1]:
+                    cv2.imshow('true image', image)
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        break
+                    time.sleep(0.1)
+                cv2.destroyAllWindows()
 
-        for image in Session.run(decode_h4,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}):
-            cv2.imshow('decode image', image)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-            time.sleep(0.1)
-        cv2.destroyAllWindows()
+                for image in Session.run(decode_h4,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}):
+                    cv2.imshow('decode image', image)
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        break
+                    time.sleep(0.1)
+                cv2.destroyAllWindows()
 
-        print(Session.run(loss,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}))
-        # print(Session.run(loss1,feed_dict={input_image:all_image[:,:,:,0:1]}))
-        # print(Session.run(loss2,feed_dict={input_image:all_image[:,:,:,0:1]}))
-        # print(Session.run(loss3,feed_dict={input_image:all_image[:,:,:,0:1]}))
-        # print(Session.run(loss4,feed_dict={input_image:all_image[:,:,:,0:1]}))
+                print(Session.run(loss,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}))
+                # print(Session.run(loss1,feed_dict={input_image:all_image[:,:,:,0:1]}))
+                # print(Session.run(loss2,feed_dict={input_image:all_image[:,:,:,0:1]}))
+                # print(Session.run(loss3,feed_dict={input_image:all_image[:,:,:,0:1]}))
+                # print(Session.run(loss4,feed_dict={input_image:all_image[:,:,:,0:1]}))
 
-    print(k)
+            print(k)
+        except:
+            print('数据异常:',one_rad,'第%s张图片'%(i+1))
+    
 
-# 正则化输出
+# 正则化输出,对应层损失
