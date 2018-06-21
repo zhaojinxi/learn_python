@@ -18,7 +18,7 @@ encode_channel3=32
 encode_channel4=64
 output_channel=1
 
-def test(x):
+def test(x,is_train):
     with tensorflow.variable_scope('encode'):
         encode_w1=tensorflow.get_variable('w1', [3,3,input_channel,encode_channel1], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
         encode_b1=tensorflow.get_variable('b1', encode_channel1, initializer=tensorflow.constant_initializer(0))
@@ -44,40 +44,39 @@ def test(x):
         decode_w1=tensorflow.get_variable('w1', [3,3,encode_channel3,encode_channel4], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
         decode_b1=tensorflow.get_variable('b1', encode_channel3, initializer=tensorflow.constant_initializer(0))
         decode_z1=tensorflow.nn.conv2d_transpose(encode_z4,decode_w1,tensorflow.shape(encode_z3),[1,2,2,1],'SAME')+decode_b1
-        mean,variance=tensorflow.nn.moments(decode_z1,[0,1,2])
-        # moving_mean = tensorflow.get_variable('mean1',encode_channel3,initializer=tensorflow.zeros_initializer,trainable=False)
-        # moving_variance = tensorflow.get_variable('variance1',encode_channel3,initializer=tensorflow.ones_initializer,trainable=False)
-        beta = tensorflow.get_variable('beta1',encode_channel3,initializer=tensorflow.zeros_initializer)
-        gamma = tensorflow.get_variable('gamma1',encode_channel3,initializer=tensorflow.ones_initializer)
-        tensorflow.nn.batch_normalization(decode_z1,mean,variance,beta,gamma,0.001)
-        
+        decode_z1=tensorflow.layers.batch_normalization(decode_z1,training=is_train,name='bn1')
         # decode_z1=tensorflow.nn.selu(decode_z1)
 
         decode_w2=tensorflow.get_variable('w2', [3,3,encode_channel2,encode_channel3], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
         decode_b2=tensorflow.get_variable('b2', encode_channel2, initializer=tensorflow.constant_initializer(0))
         decode_z2=tensorflow.nn.conv2d_transpose(decode_z1,decode_w2,tensorflow.shape(encode_z2),[1,2,2,1],'SAME')+decode_b2
+        decode_z2=tensorflow.layers.batch_normalization(decode_z2,training=is_train,name='bn2')
         # decode_z2=tensorflow.nn.selu(decode_z2)
 
         decode_w3=tensorflow.get_variable('w3', [3,3,encode_channel1,encode_channel2], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
         decode_b3=tensorflow.get_variable('b3', encode_channel1, initializer=tensorflow.constant_initializer(0))
         decode_z3=tensorflow.nn.conv2d_transpose(decode_z2,decode_w3,tensorflow.shape(encode_z1),[1,2,2,1],'SAME')+decode_b3
+        decode_z3=tensorflow.layers.batch_normalization(decode_z3,training=is_train,name='bn3')
         # decode_z3=tensorflow.nn.selu(decode_z3)
 
         decode_w4=tensorflow.get_variable('w4', [3,3,input_channel,encode_channel1], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
         decode_b4=tensorflow.get_variable('b4', input_channel, initializer=tensorflow.constant_initializer(0))
         decode_z4=tensorflow.nn.conv2d_transpose(decode_z3,decode_w4,tensorflow.shape(x),[1,2,2,1],'SAME')+decode_b4
+        decode_z4=tensorflow.layers.batch_normalization(decode_z4,training=is_train,name='bn4')
         decode_z4=tensorflow.nn.tanh(decode_z4)
 
     return encode_z1, encode_z2, encode_z3, encode_z4, decode_z1, decode_z2, decode_z3, decode_z4*128+128
 
 input_image=tensorflow.placeholder(tensorflow.float32,[None,501,501,1])
+is_train=tensorflow.placeholder(tensorflow.bool)
 
-encode_h1, encode_h2, encode_h3, encode_h4, decode_h1, decode_h2, decode_h3, decode_h4=test(input_image)
+encode_h1, encode_h2, encode_h3, encode_h4, decode_h1, decode_h2, decode_h3, decode_h4=test(input_image,is_train)
 
-loss=tensorflow.losses.mean_squared_error(input_image,decode_h4)+tensorflow.losses.mean_squared_error(encode_h1,decode_h3)+tensorflow.losses.mean_squared_error(encode_h2,decode_h2)+tensorflow.losses.mean_squared_error(encode_h3,decode_h1)
+# loss=tensorflow.losses.mean_squared_error(input_image,decode_h4)+tensorflow.losses.mean_squared_error(encode_h1,decode_h3)+tensorflow.losses.mean_squared_error(encode_h2,decode_h2)+tensorflow.losses.mean_squared_error(encode_h3,decode_h1)
 
-# loss=tensorflow.losses.mean_squared_error(input_image,decode_h4)
-AdamOptimizer=tensorflow.train.AdamOptimizer(0.00001).minimize(loss)
+loss=tensorflow.losses.mean_squared_error(input_image,decode_h4)
+with tensorflow.control_dependencies(tensorflow.get_collection(tensorflow.GraphKeys.UPDATE_OPS)):
+    AdamOptimizer=tensorflow.train.AdamOptimizer(0.00001).minimize(loss)
 
 # loss1=tensorflow.losses.mean_squared_error(input_image,decode_h4)
 # loss2=tensorflow.losses.mean_squared_error(encode_h1,decode_h3)
@@ -122,7 +121,7 @@ for k in range(10001):
     all_image=numpy.array(all_image)
 
     for i in range(all_image.shape[0]):
-        Session.run(AdamOptimizer,feed_dict={input_image:all_image[i:i+1,:,:,0:1]})
+        Session.run(AdamOptimizer,feed_dict={input_image:all_image[i:i+1,:,:,0:1],is_train:True})
         # Session.run(AdamOptimizer1,feed_dict={input_image:all_image[:,:,:,0:1]})
         # Session.run(AdamOptimizer2,feed_dict={input_image:all_image[:,:,:,0:1]})
         # Session.run(AdamOptimizer3,feed_dict={input_image:all_image[:,:,:,0:1]})
@@ -136,14 +135,14 @@ for k in range(10001):
             time.sleep(0.1)
         cv2.destroyAllWindows()
 
-        for image in Session.run(decode_h4,feed_dict={input_image:all_image[:,:,:,0:1]}):
+        for image in Session.run(decode_h4,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}):
             cv2.imshow('decode image', image)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
             time.sleep(0.1)
         cv2.destroyAllWindows()
 
-        print(Session.run(loss,feed_dict={input_image:all_image[:,:,:,0:1]}))
+        print(Session.run(loss,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}))
         # print(Session.run(loss1,feed_dict={input_image:all_image[:,:,:,0:1]}))
         # print(Session.run(loss2,feed_dict={input_image:all_image[:,:,:,0:1]}))
         # print(Session.run(loss3,feed_dict={input_image:all_image[:,:,:,0:1]}))
