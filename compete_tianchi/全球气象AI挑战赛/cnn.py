@@ -23,21 +23,25 @@ def test(x,is_train):
         encode_w1=tensorflow.get_variable('w1', [3,3,input_channel,encode_channel1], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
         encode_b1=tensorflow.get_variable('b1', encode_channel1, initializer=tensorflow.constant_initializer(0))
         encode_z1=tensorflow.nn.conv2d((x-128)/128,encode_w1,[1,2,2,1],'SAME')+encode_b1
-        # encode_z1=tensorflow.nn.selu(encode_z1)    
+        encode_z1=tensorflow.layers.batch_normalization(encode_z1,training=is_train,name='bn1')
+        encode_z1=tensorflow.nn.selu(encode_z1)
 
         encode_w2=tensorflow.get_variable('w2', [3,3,encode_channel1,encode_channel2], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
         encode_b2=tensorflow.get_variable('b2', encode_channel2, initializer=tensorflow.constant_initializer(0))
         encode_z2=tensorflow.nn.conv2d(encode_z1,encode_w2,[1,2,2,1],'SAME')+encode_b2
-        # encode_z2=tensorflow.nn.selu(encode_z2)
+        encode_z2=tensorflow.layers.batch_normalization(encode_z2,training=is_train,name='bn2')
+        encode_z2=tensorflow.nn.selu(encode_z2)
 
         encode_w3=tensorflow.get_variable('w3', [3,3,encode_channel2,encode_channel3], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
         encode_b3=tensorflow.get_variable('b3', encode_channel3, initializer=tensorflow.constant_initializer(0))
         encode_z3=tensorflow.nn.conv2d(encode_z2,encode_w3,[1,2,2,1],'SAME')+encode_b3
-        # encode_z3=tensorflow.nn.selu(encode_z3)
+        encode_z3=tensorflow.layers.batch_normalization(encode_z3,training=is_train,name='bn3')
+        encode_z3=tensorflow.nn.selu(encode_z3)
 
         encode_w4=tensorflow.get_variable('w4', [3,3,encode_channel3,encode_channel4], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
         encode_b4=tensorflow.get_variable('b4', encode_channel4, initializer=tensorflow.constant_initializer(0))
         encode_z4=tensorflow.nn.conv2d(encode_z3,encode_w4,[1,2,2,1],'SAME')+encode_b4
+        encode_z4=tensorflow.layers.batch_normalization(encode_z4,training=is_train,name='bn4')
         encode_z4=tensorflow.nn.tanh(encode_z4)
 
     with tensorflow.variable_scope('decode'):
@@ -45,19 +49,19 @@ def test(x,is_train):
         decode_b1=tensorflow.get_variable('b1', encode_channel3, initializer=tensorflow.constant_initializer(0))
         decode_z1=tensorflow.nn.conv2d_transpose(encode_z4,decode_w1,tensorflow.shape(encode_z3),[1,2,2,1],'SAME')+decode_b1
         decode_z1=tensorflow.layers.batch_normalization(decode_z1,training=is_train,name='bn1')
-        # decode_z1=tensorflow.nn.selu(decode_z1)
+        decode_z1=tensorflow.nn.selu(decode_z1)
 
         decode_w2=tensorflow.get_variable('w2', [3,3,encode_channel2,encode_channel3], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
         decode_b2=tensorflow.get_variable('b2', encode_channel2, initializer=tensorflow.constant_initializer(0))
         decode_z2=tensorflow.nn.conv2d_transpose(decode_z1,decode_w2,tensorflow.shape(encode_z2),[1,2,2,1],'SAME')+decode_b2
         decode_z2=tensorflow.layers.batch_normalization(decode_z2,training=is_train,name='bn2')
-        # decode_z2=tensorflow.nn.selu(decode_z2)
+        decode_z2=tensorflow.nn.selu(decode_z2)
 
         decode_w3=tensorflow.get_variable('w3', [3,3,encode_channel1,encode_channel2], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
         decode_b3=tensorflow.get_variable('b3', encode_channel1, initializer=tensorflow.constant_initializer(0))
         decode_z3=tensorflow.nn.conv2d_transpose(decode_z2,decode_w3,tensorflow.shape(encode_z1),[1,2,2,1],'SAME')+decode_b3
         decode_z3=tensorflow.layers.batch_normalization(decode_z3,training=is_train,name='bn3')
-        # decode_z3=tensorflow.nn.selu(decode_z3)
+        decode_z3=tensorflow.nn.selu(decode_z3)
 
         decode_w4=tensorflow.get_variable('w4', [3,3,input_channel,encode_channel1], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
         decode_b4=tensorflow.get_variable('b4', input_channel, initializer=tensorflow.constant_initializer(0))
@@ -72,38 +76,49 @@ is_train=tensorflow.placeholder(tensorflow.bool)
 
 encode_h1, encode_h2, encode_h3, encode_h4, decode_h1, decode_h2, decode_h3, decode_h4=test(input_image,is_train)
 
-# loss=tensorflow.losses.mean_squared_error(input_image,decode_h4)+tensorflow.losses.mean_squared_error(encode_h1,decode_h3)+tensorflow.losses.mean_squared_error(encode_h2,decode_h2)+tensorflow.losses.mean_squared_error(encode_h3,decode_h1)
+# loss=tensorflow.losses.mean_squared_error(input_image,decode_h4)
+loss1=tensorflow.losses.mean_squared_error(input_image,decode_h4)
+loss2=tensorflow.losses.mean_squared_error(encode_h1,decode_h3)
+loss3=tensorflow.losses.mean_squared_error(encode_h2,decode_h2)
+loss4=tensorflow.losses.mean_squared_error(encode_h3,decode_h1)
 
-loss=tensorflow.losses.mean_squared_error(input_image,decode_h4)
+loss1_var=tensorflow.get_collection(tensorflow.GraphKeys.TRAINABLE_VARIABLES)
+loss2_var=tensorflow.get_collection(tensorflow.GraphKeys.TRAINABLE_VARIABLES)
+loss2_var.pop(0)
+loss2_var.pop(0)
+loss2_var.pop(-1)
+loss2_var.pop(-1)
+loss3_var=tensorflow.get_collection(tensorflow.GraphKeys.TRAINABLE_VARIABLES)
+loss3_var.pop(0)
+loss3_var.pop(0)
+loss3_var.pop(0)
+loss3_var.pop(0)
+loss3_var.pop(-1)
+loss3_var.pop(-1)
+loss3_var.pop(-1)
+loss3_var.pop(-1)
+loss4_var=tensorflow.get_collection(tensorflow.GraphKeys.TRAINABLE_VARIABLES)
+loss4_var.pop(0)
+loss4_var.pop(0)
+loss4_var.pop(0)
+loss4_var.pop(0)
+loss4_var.pop(0)
+loss4_var.pop(0)
+loss4_var.pop(-1)
+loss4_var.pop(-1)
+loss4_var.pop(-1)
+loss4_var.pop(-1)
+loss4_var.pop(-1)
+loss4_var.pop(-1)
+
 with tensorflow.control_dependencies(tensorflow.get_collection(tensorflow.GraphKeys.UPDATE_OPS)):
-    AdamOptimizer=tensorflow.train.AdamOptimizer(0.00001).minimize(loss)
+    # minimize=tensorflow.train.AdamOptimizer(0.00001).minimize(loss)
 
-# loss1=tensorflow.losses.mean_squared_error(input_image,decode_h4)
-# loss2=tensorflow.losses.mean_squared_error(encode_h1,decode_h3)
-# loss3=tensorflow.losses.mean_squared_error(encode_h2,decode_h2)
-# loss4=tensorflow.losses.mean_squared_error(encode_h3,decode_h1)
-
-# loss1_var=tensorflow.get_collection(tensorflow.GraphKeys.TRAINABLE_VARIABLES)
-# loss2_var=tensorflow.get_collection(tensorflow.GraphKeys.TRAINABLE_VARIABLES)
-# loss2_var.pop(-1)
-# loss2_var.pop(-1)
-# loss3_var=tensorflow.get_collection(tensorflow.GraphKeys.TRAINABLE_VARIABLES)
-# loss3_var.pop(-1)
-# loss3_var.pop(-1)
-# loss3_var.pop(-1)
-# loss3_var.pop(-1)
-# loss4_var=tensorflow.get_collection(tensorflow.GraphKeys.TRAINABLE_VARIABLES)
-# loss4_var.pop(-1)
-# loss4_var.pop(-1)
-# loss4_var.pop(-1)
-# loss4_var.pop(-1)
-# loss4_var.pop(-1)
-# loss4_var.pop(-1)
-
-# AdamOptimizer1=tensorflow.train.AdamOptimizer(0.00001,name='adam1').minimize(loss1,var_list=loss1_var)
-# AdamOptimizer2=tensorflow.train.AdamOptimizer(0.00001,name='adam2').minimize(loss2,var_list=loss2_var)
-# AdamOptimizer3=tensorflow.train.AdamOptimizer(0.00001,name='adam3').minimize(loss3,var_list=loss3_var)
-# AdamOptimizer4=tensorflow.train.AdamOptimizer(0.00001,name='adam4').minimize(loss4,var_list=loss4_var)
+    AdamOptimizer=tensorflow.train.AdamOptimizer(0.00001)
+    minimize1=AdamOptimizer.minimize(loss1,var_list=loss1_var)
+    minimize2=AdamOptimizer.minimize(loss2,var_list=loss2_var)
+    minimize3=AdamOptimizer.minimize(loss3,var_list=loss3_var)
+    minimize4=AdamOptimizer.minimize(loss4,var_list=loss4_var)
 
 Session=tensorflow.Session()
 Session.run(tensorflow.global_variables_initializer())
@@ -119,38 +134,36 @@ for k in range(10001):
     all_image_dir.sort()
     all_image=[cv2.imread(x) for x in all_image_dir]
     all_image=numpy.array(all_image)
-    for i in range(all_image.shape[0]):
-        try:
-            Session.run(AdamOptimizer,feed_dict={input_image:all_image[i:i+1,:,:,0:1],is_train:True})
-            # Session.run(AdamOptimizer1,feed_dict={input_image:all_image[:,:,:,0:1]})
-            # Session.run(AdamOptimizer2,feed_dict={input_image:all_image[:,:,:,0:1]})
-            # Session.run(AdamOptimizer3,feed_dict={input_image:all_image[:,:,:,0:1]})
-            # Session.run(AdamOptimizer4,feed_dict={input_image:all_image[:,:,:,0:1]})
+    try:
+        for i in range(all_image.shape[0]):
+            # Session.run(minimize,feed_dict={input_image:all_image[i:i+1,:,:,0:1],is_train:True})
+            Session.run(minimize4,feed_dict={input_image:all_image[i:i+1,:,:,0:1],is_train:True})
+            Session.run(minimize3,feed_dict={input_image:all_image[i:i+1,:,:,0:1],is_train:True})
+            Session.run(minimize2,feed_dict={input_image:all_image[i:i+1,:,:,0:1],is_train:True})
+            Session.run(minimize1,feed_dict={input_image:all_image[i:i+1,:,:,0:1],is_train:True})
 
-            if k%100==0:
-                for image in all_image[:,:,:,0:1]:
-                    cv2.imshow('true image', image)
-                    if cv2.waitKey(1) & 0xFF == ord('q'):
-                        break
-                    time.sleep(0.1)
-                cv2.destroyAllWindows()
+        if k%100==0:
+            for image in all_image[:,:,:,0:1]:
+                cv2.imshow('true image', image)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+                time.sleep(0.1)
+            cv2.destroyAllWindows()
 
-                for image in Session.run(decode_h4,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}):
-                    cv2.imshow('decode image', image)
-                    if cv2.waitKey(1) & 0xFF == ord('q'):
-                        break
-                    time.sleep(0.1)
-                cv2.destroyAllWindows()
+            for image in Session.run(decode_h4,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}):
+                cv2.imshow('decode image', image)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+                time.sleep(0.1)
+            cv2.destroyAllWindows()
 
-                print(Session.run(loss,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}))
-                # print(Session.run(loss1,feed_dict={input_image:all_image[:,:,:,0:1]}))
-                # print(Session.run(loss2,feed_dict={input_image:all_image[:,:,:,0:1]}))
-                # print(Session.run(loss3,feed_dict={input_image:all_image[:,:,:,0:1]}))
-                # print(Session.run(loss4,feed_dict={input_image:all_image[:,:,:,0:1]}))
+            # print(Session.run(loss,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}))
+            print(Session.run(loss1,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}))
+            print(Session.run(loss2,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}))
+            print(Session.run(loss3,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}))
+            print(Session.run(loss4,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}))
 
-            print(k)
-        except:
+        print(k)
+
+    except:
             print('数据异常:',one_rad,'第%s张图片'%(i+1))
-    
-
-# 正则化输出,对应层损失
