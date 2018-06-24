@@ -10,7 +10,12 @@ import random
 import time
 
 data_dir='E:/SRAD2018/train'
-
+log_dir='log/'
+model_dir='model/'
+image_dim=501
+init_lr=0.001
+decay_rate=0.01
+max_step=10001
 input_channel=1
 encode_channel1=8
 encode_channel2=16
@@ -71,9 +76,10 @@ def test(x,is_train):
 
     return encode_z1, encode_z2, encode_z3, encode_z4, decode_z1, decode_z2, decode_z3, decode_z4*128+128
 
-input_image=tensorflow.placeholder(tensorflow.float32,[None,501,501,1])
+input_image=tensorflow.placeholder(tensorflow.float32,[None,image_dim,image_dim,1])
 is_train=tensorflow.placeholder(tensorflow.bool)
-
+global_step=0
+learn_rate=tensorflow.train.exponential_decay(init_lr,global_step,max_step,0.01)
 encode_h1, encode_h2, encode_h3, encode_h4, decode_h1, decode_h2, decode_h3, decode_h4=test(input_image,is_train)
 
 # loss=tensorflow.losses.mean_squared_error(input_image,decode_h4)
@@ -112,18 +118,31 @@ loss4_var.pop(-1)
 loss4_var.pop(-1)
 
 with tensorflow.control_dependencies(tensorflow.get_collection(tensorflow.GraphKeys.UPDATE_OPS)):
-    # minimize=tensorflow.train.AdamOptimizer(0.00001).minimize(loss)
+    # minimize=tensorflow.train.AdamOptimizer(learn_rate).minimize(loss)
 
-    AdamOptimizer=tensorflow.train.AdamOptimizer(0.00001)
-    minimize1=AdamOptimizer.minimize(loss1,var_list=loss1_var)
-    minimize2=AdamOptimizer.minimize(loss2,var_list=loss2_var)
-    minimize3=AdamOptimizer.minimize(loss3,var_list=loss3_var)
-    minimize4=AdamOptimizer.minimize(loss4,var_list=loss4_var)
+    AdamOptimizer=tensorflow.train.AdamOptimizer(learn_rate)
+    minimize1=AdamOptimizer.minimize(loss1,var_list=loss1_var,name='minimize1')
+    minimize2=AdamOptimizer.minimize(loss2,var_list=loss2_var,name='minimize2')
+    minimize3=AdamOptimizer.minimize(loss3,var_list=loss3_var,name='minimize3')
+    minimize4=AdamOptimizer.minimize(loss4,var_list=loss4_var,name='minimize4')
+
+Saver = tensorflow.train.Saver()
 
 Session=tensorflow.Session()
 Session.run(tensorflow.global_variables_initializer())
 
-for k in range(10001):
+tensorflow.summary.scalar('loss1', loss1)
+tensorflow.summary.scalar('loss2', loss2)
+tensorflow.summary.scalar('loss3', loss3)
+tensorflow.summary.scalar('loss4', loss4)
+tensorflow.summary.image('true_images', input_image, 61)
+tensorflow.summary.image('decode_images', decode_h4, 61)
+merge_all = tensorflow.summary.merge_all()
+FileWriter = tensorflow.summary.FileWriter(log_dir, Session.graph)
+
+for i in range(max_step):
+    # lr=tensorflow.train.exponential_decay(init_lr,i,max_step,0.01)
+    # AdamOptimizer._lr=lr
     all_file=os.listdir(data_dir)
     pick_one_file=random.sample(all_file,1)[0]
     one_file=os.path.join(data_dir,pick_one_file)
@@ -134,15 +153,16 @@ for k in range(10001):
     all_image_dir.sort()
     all_image=[cv2.imread(x) for x in all_image_dir]
     all_image=numpy.array(all_image)
-    try:
-        for i in range(all_image.shape[0]):
-            # Session.run(minimize,feed_dict={input_image:all_image[i:i+1,:,:,0:1],is_train:True})
-            Session.run(minimize4,feed_dict={input_image:all_image[i:i+1,:,:,0:1],is_train:True})
-            Session.run(minimize3,feed_dict={input_image:all_image[i:i+1,:,:,0:1],is_train:True})
-            Session.run(minimize2,feed_dict={input_image:all_image[i:i+1,:,:,0:1],is_train:True})
-            Session.run(minimize1,feed_dict={input_image:all_image[i:i+1,:,:,0:1],is_train:True})
 
-        if k%100==0:
+    try:
+        for j in range(all_image.shape[0]):
+            # Session.run(minimize,feed_dict={input_image:all_image[j:j+1,:,:,0:1],is_train:True})
+            Session.run(minimize4,feed_dict={input_image:all_image[j:j+1,:,:,0:1],is_train:True})
+            Session.run(minimize3,feed_dict={input_image:all_image[j:j+1,:,:,0:1],is_train:True})
+            Session.run(minimize2,feed_dict={input_image:all_image[j:j+1,:,:,0:1],is_train:True})
+            Session.run(minimize1,feed_dict={input_image:all_image[j:j+1,:,:,0:1],is_train:True})
+
+        if i%100==0:
             for image in all_image[:,:,:,0:1]:
                 cv2.imshow('true image', image)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -157,13 +177,17 @@ for k in range(10001):
                 time.sleep(0.1)
             cv2.destroyAllWindows()
 
+            summary = Session.run(merge_all, feed_dict={input_image:all_image[:,:,:,0:1],is_train:False})
+            FileWriter.add_summary(summary, i)
+            Saver.save(Session, model_dir, i)
+
             # print(Session.run(loss,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}))
             print(Session.run(loss1,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}))
             print(Session.run(loss2,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}))
             print(Session.run(loss3,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}))
             print(Session.run(loss4,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}))
 
-        print(k)
+        print(i)
 
     except:
-            print('数据异常:',one_rad,'第%s张图片'%(i+1))
+            print('数据异常:',one_rad,'第%s张图片'%(j+1))
