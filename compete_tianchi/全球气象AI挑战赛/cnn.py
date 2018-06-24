@@ -141,8 +141,7 @@ merge_all = tensorflow.summary.merge_all()
 FileWriter = tensorflow.summary.FileWriter(log_dir, Session.graph)
 
 for i in range(max_step):
-    # lr=tensorflow.train.exponential_decay(init_lr,i,max_step,0.01)
-    # AdamOptimizer._lr=lr
+    global_step=i
     all_file=os.listdir(data_dir)
     pick_one_file=random.sample(all_file,1)[0]
     one_file=os.path.join(data_dir,pick_one_file)
@@ -153,29 +152,30 @@ for i in range(max_step):
     all_image_dir.sort()
     all_image=[cv2.imread(x) for x in all_image_dir]
     all_image=numpy.array(all_image)
-
+    print(Session.run(learn_rate))
+    print(AdamOptimizer._lr)
     try:
-        for j in range(all_image.shape[0]):
-            # Session.run(minimize,feed_dict={input_image:all_image[j:j+1,:,:,0:1],is_train:True})
-            Session.run(minimize4,feed_dict={input_image:all_image[j:j+1,:,:,0:1],is_train:True})
-            Session.run(minimize3,feed_dict={input_image:all_image[j:j+1,:,:,0:1],is_train:True})
-            Session.run(minimize2,feed_dict={input_image:all_image[j:j+1,:,:,0:1],is_train:True})
-            Session.run(minimize1,feed_dict={input_image:all_image[j:j+1,:,:,0:1],is_train:True})
+        # for j in range(all_image.shape[0]):
+        #     # Session.run(minimize,feed_dict={input_image:all_image[j:j+1,:,:,0:1],is_train:True})
+        #     Session.run(minimize4,feed_dict={input_image:all_image[j:j+1,:,:,0:1],is_train:True})
+        #     Session.run(minimize3,feed_dict={input_image:all_image[j:j+1,:,:,0:1],is_train:True})
+        #     Session.run(minimize2,feed_dict={input_image:all_image[j:j+1,:,:,0:1],is_train:True})
+        #     Session.run(minimize1,feed_dict={input_image:all_image[j:j+1,:,:,0:1],is_train:True})
 
         if i%100==0:
-            for image in all_image[:,:,:,0:1]:
-                cv2.imshow('true image', image)
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    break
-                time.sleep(0.1)
-            cv2.destroyAllWindows()
+            # for image in all_image[:,:,:,0:1]:
+            #     cv2.imshow('true image', image)
+            #     if cv2.waitKey(1) & 0xFF == ord('q'):
+            #         break
+            #     time.sleep(0.1)
+            # cv2.destroyAllWindows()
 
-            for image in Session.run(decode_h4,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}):
-                cv2.imshow('decode image', image)
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    break
-                time.sleep(0.1)
-            cv2.destroyAllWindows()
+            # for image in Session.run(decode_h4,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}):
+            #     cv2.imshow('decode image', image)
+            #     if cv2.waitKey(1) & 0xFF == ord('q'):
+            #         break
+            #     time.sleep(0.1)
+            # cv2.destroyAllWindows()
 
             summary = Session.run(merge_all, feed_dict={input_image:all_image[:,:,:,0:1],is_train:False})
             FileWriter.add_summary(summary, i)
