@@ -9,7 +9,7 @@ import cv2
 import random
 import time
 
-data_dir='E:/SRAD2018/train'
+data_dir='/media/zhao/新加卷/SRAD2018/train'
 log_dir='log/'
 model_dir='model/'
 image_dim=501
@@ -78,8 +78,7 @@ def test(x,is_train):
 
 input_image=tensorflow.placeholder(tensorflow.float32,[None,image_dim,image_dim,1])
 is_train=tensorflow.placeholder(tensorflow.bool)
-global_step=0
-learn_rate=tensorflow.train.exponential_decay(init_lr,global_step,max_step,0.01)
+
 encode_h1, encode_h2, encode_h3, encode_h4, decode_h1, decode_h2, decode_h3, decode_h4=test(input_image,is_train)
 
 # loss=tensorflow.losses.mean_squared_error(input_image,decode_h4)
@@ -118,9 +117,9 @@ loss4_var.pop(-1)
 loss4_var.pop(-1)
 
 with tensorflow.control_dependencies(tensorflow.get_collection(tensorflow.GraphKeys.UPDATE_OPS)):
-    # minimize=tensorflow.train.AdamOptimizer(learn_rate).minimize(loss)
+    # minimize=tensorflow.train.AdamOptimizer(init_lr).minimize(loss)
 
-    AdamOptimizer=tensorflow.train.AdamOptimizer(learn_rate)
+    AdamOptimizer=tensorflow.train.AdamOptimizer(init_lr)
     minimize1=AdamOptimizer.minimize(loss1,var_list=loss1_var,name='minimize1')
     minimize2=AdamOptimizer.minimize(loss2,var_list=loss2_var,name='minimize2')
     minimize3=AdamOptimizer.minimize(loss3,var_list=loss3_var,name='minimize3')
@@ -141,7 +140,7 @@ merge_all = tensorflow.summary.merge_all()
 FileWriter = tensorflow.summary.FileWriter(log_dir, Session.graph)
 
 for i in range(max_step):
-    global_step=i
+    AdamOptimizer._lr=tensorflow.train.exponential_decay(init_lr,i,max_step,0.01)
     all_file=os.listdir(data_dir)
     pick_one_file=random.sample(all_file,1)[0]
     one_file=os.path.join(data_dir,pick_one_file)
@@ -152,15 +151,14 @@ for i in range(max_step):
     all_image_dir.sort()
     all_image=[cv2.imread(x) for x in all_image_dir]
     all_image=numpy.array(all_image)
-    print(Session.run(learn_rate))
-    print(AdamOptimizer._lr)
+
     try:
-        # for j in range(all_image.shape[0]):
-        #     # Session.run(minimize,feed_dict={input_image:all_image[j:j+1,:,:,0:1],is_train:True})
-        #     Session.run(minimize4,feed_dict={input_image:all_image[j:j+1,:,:,0:1],is_train:True})
-        #     Session.run(minimize3,feed_dict={input_image:all_image[j:j+1,:,:,0:1],is_train:True})
-        #     Session.run(minimize2,feed_dict={input_image:all_image[j:j+1,:,:,0:1],is_train:True})
-        #     Session.run(minimize1,feed_dict={input_image:all_image[j:j+1,:,:,0:1],is_train:True})
+        for j in range(all_image.shape[0]):
+            # Session.run(minimize,feed_dict={input_image:all_image[j:j+1,:,:,0:1],is_train:True})
+            Session.run(minimize4,feed_dict={input_image:all_image[j:j+1,:,:,0:1],is_train:True})
+            Session.run(minimize3,feed_dict={input_image:all_image[j:j+1,:,:,0:1],is_train:True})
+            Session.run(minimize2,feed_dict={input_image:all_image[j:j+1,:,:,0:1],is_train:True})
+            Session.run(minimize1,feed_dict={input_image:all_image[j:j+1,:,:,0:1],is_train:True})
 
         if i%100==0:
             # for image in all_image[:,:,:,0:1]:
@@ -190,4 +188,5 @@ for i in range(max_step):
         print(i)
 
     except:
-            print('数据异常:',one_rad,'第%s张图片'%(j+1))
+        with open('log/异常数据目录.txt','a') as f:
+            f.write('异常数据:%s,第%s张图片\n'%(one_rad,j+1))
