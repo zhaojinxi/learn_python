@@ -5,8 +5,9 @@ import cv2
 import random
 import time
 
+# data_dir='E:/SRAD2018/train'
 # data_dir='/media/zhao/新加卷/SRAD2018/train'
-data_dir='/media/zhao/新加卷/SRAD2018/train'
+data_dir='/home/jxzhao/tianchi/SRAD2018/train'
 log_dir='log/'
 model_dir='model/'
 image_dim=501
