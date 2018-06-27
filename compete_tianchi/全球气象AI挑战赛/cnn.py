@@ -13,7 +13,7 @@ model_dir='model/'
 image_dim=501
 init_lr=0.001
 decay_rate=0.01
-max_step=10001
+max_step=300001
 input_channel=1
 encode_channel1=8
 encode_channel2=16
@@ -128,7 +128,7 @@ with tensorflow.control_dependencies(tensorflow.get_collection(tensorflow.GraphK
     minimize3=AdamOptimizer.minimize(loss3,var_list=loss3_var,name='minimize3')
     minimize4=AdamOptimizer.minimize(loss4,var_list=loss4_var,name='minimize4')
 
-Saver = tensorflow.train.Saver()
+Saver = tensorflow.train.Saver(max_to_keep=0,keep_checkpoint_every_n_hours=0.5)
 
 Session=tensorflow.Session()
 Session.run(tensorflow.global_variables_initializer())
