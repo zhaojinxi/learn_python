@@ -6,8 +6,8 @@ import random
 import time
 
 # data_dir='E:/SRAD2018/train'
-# data_dir='/media/zhao/新加卷/SRAD2018/train'
-data_dir='/home/jxzhao/tianchi/SRAD2018/train'
+data_dir='/media/zhao/新加卷/SRAD2018/train'
+# data_dir='/home/jxzhao/tianchi/SRAD2018/train'
 log_dir='log/'
 model_dir='model/'
 init_lr=0.001
@@ -155,8 +155,6 @@ for i in range(max_step):
     all_image_dir.sort()
     all_image=[cv2.imread(x) for x in all_image_dir]
     all_image=numpy.array(all_image)
-
-    # result_de=Session.run(decode_result,feed_dict={input_code:encode_result[3][:,:,:,:],is_train:True})
 
     try:
         # for j in range(all_image.shape[0]):
