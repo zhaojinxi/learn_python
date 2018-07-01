@@ -5,9 +5,9 @@ import cv2
 import random
 import time
 
-# data_dir='E:/SRAD2018/train'
+data_dir='E:/SRAD2018/train'
 # data_dir='/media/zhao/新加卷/SRAD2018/train'
-data_dir='/home/jxzhao/tianchi/SRAD2018/train'
+# data_dir='/home/jxzhao/tianchi/SRAD2018/train'
 log_dir='log/'
 model_dir='model/'
 init_lr=0.001
@@ -24,7 +24,7 @@ def encode(x,is_train):
     with tensorflow.variable_scope('encode'):
         encode_w1=tensorflow.get_variable('w1', [3,3,input_channel,encode_channel1], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
         encode_b1=tensorflow.get_variable('b1', encode_channel1, initializer=tensorflow.constant_initializer(0))
-        encode_z1=tensorflow.nn.conv2d(x,encode_w1,[1,2,2,1],'SAME')+encode_b1
+        encode_z1=tensorflow.nn.conv2d((x-128)/128,encode_w1,[1,2,2,1],'SAME')+encode_b1
         encode_z1=tensorflow.layers.batch_normalization(encode_z1,training=is_train,name='bn1')
         encode_z1=tensorflow.nn.selu(encode_z1)
 
@@ -70,7 +70,10 @@ def decode(x,is_train):
 
         decode_w4=tensorflow.get_variable('w4', [3,3,input_channel,encode_channel1], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
         decode_b4=tensorflow.get_variable('b4', input_channel, initializer=tensorflow.constant_initializer(0))
-        decode_z4=tensorflow.add(tensorflow.nn.conv2d_transpose(decode_z3,decode_w4,tensorflow.convert_to_tensor([tensorflow.shape(x)[0],501,501,1]),[1,2,2,1],'SAME'),decode_b4,name='decode_image')
+        decode_z4=tensorflow.nn.conv2d_transpose(decode_z3,decode_w4,tensorflow.convert_to_tensor([tensorflow.shape(x)[0],501,501,1]),[1,2,2,1],'SAME')+decode_b4
+        decode_z4=tensorflow.layers.batch_normalization(decode_z4,training=is_train,name='bn4')
+        decode_z4=tensorflow.nn.tanh(decode_z4)
+        decode_z4=tensorflow.clip_by_value(decode_z4*128+128,0,255,name='decode_image')
 
     return decode_z4
 
@@ -127,4 +130,4 @@ for _ in range(max_step):
         with open('log/异常数据目录.txt','a') as f:
             f.write('异常数据:%s\n'%(one_rad))
         
-    global_step=tensorflow.add(global_step,1)
+    Session.run(tensorflow.assign_add(global_step,1))
