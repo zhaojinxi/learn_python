@@ -6,10 +6,10 @@ import random
 import time
 
 # data_dir='E:/SRAD2018/train'
-# data_dir='/media/zhao/新加卷/SRAD2018/train'
-data_dir='/home/jxzhao/tianchi/SRAD2018/train'
-log_dir='log/'
-model_dir='model/'
+data_dir='/media/zhao/新加卷/SRAD2018/train'
+# data_dir='/home/jxzhao/tianchi/SRAD2018/train'
+log_dir='../cnn/log/'
+model_dir='../cnn/model/'
 init_lr=0.001
 decay_rate=0.01
 max_step=300001
@@ -19,6 +19,17 @@ encode_channel2=16
 encode_channel3=32
 encode_channel4=64
 output_channel=1
+
+all_file=os.listdir(data_dir)
+pick_one_file=random.sample(all_file,1)[0]
+one_file=os.path.join(data_dir,pick_one_file)
+one_all_rad=os.listdir(one_file)
+pick_one_rad=random.sample(one_all_rad,1)[0]
+one_rad=os.path.join(one_file,pick_one_rad)
+all_image_dir=[os.path.join(one_rad,x) for x in os.listdir(one_rad)]
+all_image_dir.sort()
+all_image=[cv2.imread(x) for x in all_image_dir]
+all_image=numpy.array(all_image)
 
 def encode(x,is_train):
     with tensorflow.variable_scope('encode'):
@@ -77,58 +88,30 @@ def decode(x,is_train):
 
     return decode_z4
 
-input_image=tensorflow.placeholder(tensorflow.float32,[None,501,501,1],name='input_image')
-input_code=tensorflow.placeholder(tensorflow.float32,[None,32,32,64],name='input_code')
-is_train=tensorflow.placeholder(tensorflow.bool,name='is_train')
-global_step = tensorflow.get_variable('global_step',initializer=0, trainable=False)
-learning_rate=tensorflow.train.exponential_decay(init_lr,global_step,max_step*61,decay_rate)
+def get_encode(all_image):
+    input_image=tensorflow.placeholder(tensorflow.float32,[None,501,501,1],name='input_image')
+    is_train=tensorflow.placeholder(tensorflow.bool,name='is_train')
 
-encode_z4=encode(input_image,is_train)
-decode_z4=decode(encode_z4,is_train)
+    encode_z4=encode(input_image,is_train)
 
-loss=tensorflow.losses.mean_squared_error(input_image,decode_z4)
+    with tensorflow.Session() as Session:
+        Saver = tensorflow.train.Saver()
+        Saver.restore(Session,tensorflow.train.latest_checkpoint(model_dir))
 
-with tensorflow.control_dependencies(tensorflow.get_collection(tensorflow.GraphKeys.UPDATE_OPS)):
-    minimize=tensorflow.train.AdamOptimizer(learning_rate).minimize(loss,global_step=global_step,name='minimize')
+        result=Session.run(encode_z4, feed_dict={input_image:all_image[:,:,:,0:1], is_train:False})
 
-Saver = tensorflow.train.Saver(max_to_keep=0,filename='cnn')
+    return result
 
-Session=tensorflow.Session()
-if tensorflow.train.latest_checkpoint(model_dir):
-    Saver.restore(Session,tensorflow.train.latest_checkpoint(model_dir))
-else:
-    Session.run(tensorflow.global_variables_initializer())
+def get_decode(code):
+    input_code=tensorflow.placeholder(tensorflow.float32,[None,32,32,64],name='input_code')
+    is_train=tensorflow.placeholder(tensorflow.bool,name='is_train')
 
-tensorflow.summary.scalar('loss', loss)
-tensorflow.summary.image('input_images', input_image, 61)
-tensorflow.summary.image('output_images', decode_z4, 61)
-merge_all = tensorflow.summary.merge_all()
-FileWriter = tensorflow.summary.FileWriter(log_dir, Session.graph)
+    decode_z4=decode(input_code,is_train)
 
-for _ in range(max_step):
-    all_file=os.listdir(data_dir)
-    pick_one_file=random.sample(all_file,1)[0]
-    one_file=os.path.join(data_dir,pick_one_file)
-    one_all_rad=os.listdir(one_file)
-    pick_one_rad=random.sample(one_all_rad,1)[0]
-    one_rad=os.path.join(one_file,pick_one_rad)
-    all_image_dir=[os.path.join(one_rad,x) for x in os.listdir(one_rad)]
-    all_image_dir.sort()
-    all_image=[cv2.imread(x) for x in all_image_dir]
-    all_image=numpy.array(all_image)
+    with tensorflow.Session() as Session:
+        Saver = tensorflow.train.Saver()
+        Saver.restore(Session,tensorflow.train.latest_checkpoint(model_dir))
 
-    try:
-        for j in range(all_image.shape[0]):
-            Session.run(minimize,feed_dict={input_image:all_image[j:j+1,:,:,0:1],is_train:True})
-        if Session.run(global_step)%61000==61:
-            summary = Session.run(merge_all, feed_dict={input_image:all_image[:,:,:,0:1],is_train:False})
-            FileWriter.add_summary(summary, Session.run(global_step))
-            Saver.save(Session, model_dir, global_step)
-            print(Session.run(loss,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}))
-    except:
-        with open('log/异常数据目录.txt','a') as f:
-            f.write('异常数据:%s\n'%(one_rad))
+        result=Session.run(decode_z4, feed_dict={input_code:code, is_train:False})
 
-    print(Session.run(global_step))
-
-Session.close()
+    return result

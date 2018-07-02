@@ -46,8 +46,7 @@ def encode(x,is_train):
         encode_z4=tensorflow.layers.batch_normalization(encode_z4,training=is_train,name='bn4')
         encode_z4=tensorflow.nn.tanh(encode_z4, name='encode_image')
 
-    return encode_z4
-    # return encode_z1, encode_z2, encode_z3, encode_z4
+    return encode_z1, encode_z2, encode_z3, encode_z4
 
 def decode(x,is_train):
     with tensorflow.variable_scope('decode',reuse=tensorflow.AUTO_REUSE):
@@ -72,77 +71,70 @@ def decode(x,is_train):
         decode_w4=tensorflow.get_variable('w4', [3,3,input_channel,encode_channel1], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
         decode_b4=tensorflow.get_variable('b4', input_channel, initializer=tensorflow.constant_initializer(0))
         decode_z4=tensorflow.add(tensorflow.nn.conv2d_transpose(decode_z3,decode_w4,tensorflow.convert_to_tensor([tensorflow.shape(x)[0],501,501,1]),[1,2,2,1],'SAME'),decode_b4,name='decode_image')
-        # decode_z4=tensorflow.layers.batch_normalization(decode_z4,training=is_train,name='bn4')
-        # decode_z4=tensorflow.nn.tanh(decode_z4)
-        # decode_z4=tensorflow.add(tensorflow.multiply(decode_z4,128),128,name='decode_image')
+        decode_z4=tensorflow.layers.batch_normalization(decode_z4,training=is_train,name='bn4')
+        decode_z4=tensorflow.nn.tanh(decode_z4)
+        decode_z4=tensorflow.add(tensorflow.multiply(decode_z4,128),128,name='decode_image')
 
-    return decode_z4
-    # return decode_z1, decode_z2, decode_z3, decode_z4
+    return decode_z1, decode_z2, decode_z3, decode_z4
 
 input_image=tensorflow.placeholder(tensorflow.float32,[None,501,501,1],name='input_image')
 input_code=tensorflow.placeholder(tensorflow.float32,[None,32,32,64],name='input_code')
 is_entrain=tensorflow.placeholder(tensorflow.bool,name='is_entrain')
 is_detrain=tensorflow.placeholder(tensorflow.bool,name='is_detrain')
 
-encode_z4=encode(input_image,is_entrain)
-decode_use=decode(input_code,is_detrain)
-decode_train=decode(encode_z4,is_detrain)
-# encode_z1, encode_z2, encode_z3, encode_z4=encode(input_image,is_train)
-# decode_z1, decode_z2, decode_z3, decode_z4=decode(input_code,is_train)
+encode_z1, encode_z2, encode_z3, encode_z4=encode(input_image,is_train)
+decode_z1, decode_z2, decode_z3, decode_z4=decode(input_code,is_train)
 
-loss=tensorflow.losses.mean_squared_error(input_image,decode(encode(input_image,is_entrain),is_detrain))
-# loss1=tensorflow.losses.mean_squared_error(input_image,decode_z4)
-# loss2=tensorflow.losses.mean_squared_error(encode_z1,decode_z3)
-# loss3=tensorflow.losses.mean_squared_error(encode_z2,decode_z2)
-# loss4=tensorflow.losses.mean_squared_error(encode_z3,decode_z1)
-# loss1_var=tensorflow.get_collection(tensorflow.GraphKeys.TRAINABLE_VARIABLES)
-# loss2_var=tensorflow.get_collection(tensorflow.GraphKeys.TRAINABLE_VARIABLES)
-# loss2_var.pop(0)
-# loss2_var.pop(0)
-# loss2_var.pop(-1)
-# loss2_var.pop(-1)
-# loss3_var=tensorflow.get_collection(tensorflow.GraphKeys.TRAINABLE_VARIABLES)
-# loss3_var.pop(0)
-# loss3_var.pop(0)
-# loss3_var.pop(0)
-# loss3_var.pop(0)
-# loss3_var.pop(-1)
-# loss3_var.pop(-1)
-# loss3_var.pop(-1)
-# loss3_var.pop(-1)
-# loss4_var=tensorflow.get_collection(tensorflow.GraphKeys.TRAINABLE_VARIABLES)
-# loss4_var.pop(0)
-# loss4_var.pop(0)
-# loss4_var.pop(0)
-# loss4_var.pop(0)
-# loss4_var.pop(0)
-# loss4_var.pop(0)
-# loss4_var.pop(-1)
-# loss4_var.pop(-1)
-# loss4_var.pop(-1)
-# loss4_var.pop(-1)
-# loss4_var.pop(-1)
-# loss4_var.pop(-1)
+loss1=tensorflow.losses.mean_squared_error(input_image,decode_z4)
+loss2=tensorflow.losses.mean_squared_error(encode_z1,decode_z3)
+loss3=tensorflow.losses.mean_squared_error(encode_z2,decode_z2)
+loss4=tensorflow.losses.mean_squared_error(encode_z3,decode_z1)
+loss1_var=tensorflow.get_collection(tensorflow.GraphKeys.TRAINABLE_VARIABLES)
+loss2_var=tensorflow.get_collection(tensorflow.GraphKeys.TRAINABLE_VARIABLES)
+loss2_var.pop(0)
+loss2_var.pop(0)
+loss2_var.pop(-1)
+loss2_var.pop(-1)
+loss3_var=tensorflow.get_collection(tensorflow.GraphKeys.TRAINABLE_VARIABLES)
+loss3_var.pop(0)
+loss3_var.pop(0)
+loss3_var.pop(0)
+loss3_var.pop(0)
+loss3_var.pop(-1)
+loss3_var.pop(-1)
+loss3_var.pop(-1)
+loss3_var.pop(-1)
+loss4_var=tensorflow.get_collection(tensorflow.GraphKeys.TRAINABLE_VARIABLES)
+loss4_var.pop(0)
+loss4_var.pop(0)
+loss4_var.pop(0)
+loss4_var.pop(0)
+loss4_var.pop(0)
+loss4_var.pop(0)
+loss4_var.pop(-1)
+loss4_var.pop(-1)
+loss4_var.pop(-1)
+loss4_var.pop(-1)
+loss4_var.pop(-1)
+loss4_var.pop(-1)
 
 with tensorflow.control_dependencies(tensorflow.get_collection(tensorflow.GraphKeys.UPDATE_OPS)):
     AdamOptimizer=tensorflow.train.AdamOptimizer(init_lr)
 
-    minimize=AdamOptimizer.minimize(loss,name='minimize')
-    # minimize1=AdamOptimizer.minimize(loss1,var_list=loss1_var,name='minimize1')
-    # minimize2=AdamOptimizer.minimize(loss2,var_list=loss2_var,name='minimize2')
-    # minimize3=AdamOptimizer.minimize(loss3,var_list=loss3_var,name='minimize3')
-    # minimize4=AdamOptimizer.minimize(loss4,var_list=loss4_var,name='minimize4')
+    minimize1=AdamOptimizer.minimize(loss1,var_list=loss1_var,name='minimize1')
+    minimize2=AdamOptimizer.minimize(loss2,var_list=loss2_var,name='minimize2')
+    minimize3=AdamOptimizer.minimize(loss3,var_list=loss3_var,name='minimize3')
+    minimize4=AdamOptimizer.minimize(loss4,var_list=loss4_var,name='minimize4')
 
 Saver = tensorflow.train.Saver(max_to_keep=0,keep_checkpoint_every_n_hours=0.5)
 
 Session=tensorflow.Session()
 Session.run(tensorflow.global_variables_initializer())
 
-tensorflow.summary.scalar('loss', loss)
-# tensorflow.summary.scalar('loss1', loss1)
-# tensorflow.summary.scalar('loss2', loss2)
-# tensorflow.summary.scalar('loss3', loss3)
-# tensorflow.summary.scalar('loss4', loss4)
+tensorflow.summary.scalar('loss1', loss1)
+tensorflow.summary.scalar('loss2', loss2)
+tensorflow.summary.scalar('loss3', loss3)
+tensorflow.summary.scalar('loss4', loss4)
 tensorflow.summary.image('input_images', input_image, 61)
 tensorflow.summary.image('output_images', decode_train, 61)
 merge_all = tensorflow.summary.merge_all()
@@ -163,11 +155,10 @@ for i in range(max_step):
 
     try:
         for j in range(all_image.shape[0]):
-            Session.run(minimize,feed_dict={input_image:all_image[j:j+1,:,:,0:1],is_entrain:True,is_detrain:True})
-        # Session.run(minimize4,feed_dict={input_image:all_image[:,:,:,0:1],is_train:True})
-        # Session.run(minimize3,feed_dict={input_image:all_image[:,:,:,0:1],is_train:True})
-        # Session.run(minimize2,feed_dict={input_image:all_image[:,:,:,0:1],is_train:True})
-        # Session.run(minimize1,feed_dict={input_image:all_image[:,:,:,0:1],is_train:True})
+            Session.run(minimize4,feed_dict={input_image:all_image[:,:,:,0:1],is_train:True})
+            Session.run(minimize3,feed_dict={input_image:all_image[:,:,:,0:1],is_train:True})
+            Session.run(minimize2,feed_dict={input_image:all_image[:,:,:,0:1],is_train:True})
+            Session.run(minimize1,feed_dict={input_image:all_image[:,:,:,0:1],is_train:True})
 
         if i%1000==0:
             # for image in all_image[:,:,:,0:1]:
@@ -188,15 +179,13 @@ for i in range(max_step):
             FileWriter.add_summary(summary, i)
             Saver.save(Session, model_dir, i)
 
-            print(Session.run(loss,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}))
-            # print(Session.run(loss1,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}))
-            # print(Session.run(loss2,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}))
-            # print(Session.run(loss3,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}))
-            # print(Session.run(loss4,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}))
+            print(Session.run(loss1,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}))
+            print(Session.run(loss2,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}))
+            print(Session.run(loss3,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}))
+            print(Session.run(loss4,feed_dict={input_image:all_image[:,:,:,0:1],is_train:False}))
 
         print(i)
 
     except:
         with open('log/异常数据目录.txt','a') as f:
-            # f.write('异常数据:%s,第%s张图片\n'%(one_rad,j+1))
-            f.write('异常数据:%s\n'%(one_rad))
+            f.write('异常数据:%s,第%s张图片\n'%(one_rad,j+1))

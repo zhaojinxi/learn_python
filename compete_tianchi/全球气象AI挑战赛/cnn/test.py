@@ -5,8 +5,8 @@ import cv2
 import random
 import time
 
-data_dir='E:/SRAD2018/train'
-# data_dir='/media/zhao/新加卷/SRAD2018/train'
+# data_dir='E:/SRAD2018/train'
+data_dir='/media/zhao/新加卷/SRAD2018/train'
 # data_dir='/home/jxzhao/tianchi/SRAD2018/train'
 log_dir='log/'
 model_dir='model/'
@@ -98,12 +98,7 @@ decode_z4=decode(input_code,is_train)
 Session=tensorflow.Session()
 
 Saver = tensorflow.train.Saver()
-Saver.restore(Session, 'model/-1000')
-# input_image = tensorflow.get_default_graph().get_tensor_by_name("input_image:0")
-# input_code = tensorflow.get_default_graph().get_tensor_by_name("input_code:0")
-# is_train = tensorflow.get_default_graph().get_tensor_by_name("is_train:0")
-# encode_z4=tensorflow.get_default_graph().get_tensor_by_name("encode/encode_image:0")
-# decode_z4=tensorflow.get_default_graph().get_tensor_by_name("decode/decode_image:0")
+Saver.restore(Session,tensorflow.train.latest_checkpoint(model_dir))
 
 result_en=Session.run(encode_z4, feed_dict={input_image:all_image[:,:,:,0:1], is_train:False})
 result_de=Session.run(decode_z4, feed_dict={input_code:result_en, is_train:False})
@@ -121,3 +116,5 @@ for image in result_de:
         break
     time.sleep(0.1)
 cv2.destroyAllWindows()
+
+Session.close()
