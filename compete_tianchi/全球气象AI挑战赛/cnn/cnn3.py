@@ -6,8 +6,8 @@ import random
 import time
 
 # data_dir='E:/SRAD2018/train'
-data_dir='/media/zhao/新加卷/SRAD2018/train'
-# data_dir='/home/jxzhao/tianchi/SRAD2018/train'
+# data_dir='/media/zhao/新加卷/SRAD2018/train'
+data_dir='/home/jxzhao/tianchi/SRAD2018/train'
 log_dir='log/'
 model_dir='model/'
 init_lr=0.001
@@ -50,27 +50,27 @@ def encode(x,is_train):
 
 def decode(x,is_train):
     with tensorflow.variable_scope('decode',reuse=tensorflow.AUTO_REUSE):
-        decode_w1=tensorflow.get_variable('w1', [3,3,encode_channel3,encode_channel4], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
+        decode_w1=tensorflow.get_variable('w1', [3,3,encode_channel4,encode_channel3], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
         decode_b1=tensorflow.get_variable('b1', encode_channel3, initializer=tensorflow.constant_initializer(0))
-        decode_z1=tensorflow.nn.conv2d_transpose(x,decode_w1,tensorflow.convert_to_tensor([tensorflow.shape(x)[0],63,63,32]),[1,2,2,1],'SAME')+decode_b1
+        decode_z1=tensorflow.nn.conv2d(tensorflow.image.resize_nearest_neighbor(x,[126,126]),decode_w1,[1,2,2,1],'SAME')+decode_b1
         decode_z1=tensorflow.layers.batch_normalization(decode_z1,training=is_train,name='bn1')
         decode_z1=tensorflow.nn.selu(decode_z1)
 
-        decode_w2=tensorflow.get_variable('w2', [3,3,encode_channel2,encode_channel3], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
+        decode_w2=tensorflow.get_variable('w2', [3,3,encode_channel3,encode_channel2], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
         decode_b2=tensorflow.get_variable('b2', encode_channel2, initializer=tensorflow.constant_initializer(0))
-        decode_z2=tensorflow.nn.conv2d_transpose(decode_z1,decode_w2,tensorflow.convert_to_tensor([tensorflow.shape(x)[0],126,126,16]),[1,2,2,1],'SAME')+decode_b2
+        decode_z2=tensorflow.nn.conv2d(tensorflow.image.resize_nearest_neighbor(decode_z1,[251,251]),decode_w2,[1,2,2,1],'SAME')+decode_b2
         decode_z2=tensorflow.layers.batch_normalization(decode_z2,training=is_train,name='bn2')
         decode_z2=tensorflow.nn.selu(decode_z2)
 
-        decode_w3=tensorflow.get_variable('w3', [3,3,encode_channel1,encode_channel2], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
+        decode_w3=tensorflow.get_variable('w3', [3,3,encode_channel2,encode_channel1], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
         decode_b3=tensorflow.get_variable('b3', encode_channel1, initializer=tensorflow.constant_initializer(0))
-        decode_z3=tensorflow.nn.conv2d_transpose(decode_z2,decode_w3,tensorflow.convert_to_tensor([tensorflow.shape(x)[0],251,251,8]),[1,2,2,1],'SAME')+decode_b3
+        decode_z3=tensorflow.nn.conv2d(tensorflow.image.resize_nearest_neighbor(decode_z2,[501,501]),decode_w3,[1,2,2,1],'SAME')+decode_b3
         decode_z3=tensorflow.layers.batch_normalization(decode_z3,training=is_train,name='bn3')
         decode_z3=tensorflow.nn.selu(decode_z3)
 
-        decode_w4=tensorflow.get_variable('w4', [3,3,input_channel,encode_channel1], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
+        decode_w4=tensorflow.get_variable('w4', [3,3,encode_channel1,input_channel], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
         decode_b4=tensorflow.get_variable('b4', input_channel, initializer=tensorflow.constant_initializer(0))
-        decode_z4=tensorflow.nn.conv2d_transpose(decode_z3,decode_w4,tensorflow.convert_to_tensor([tensorflow.shape(x)[0],501,501,1]),[1,2,2,1],'SAME')+decode_b4
+        decode_z4=tensorflow.nn.conv2d(tensorflow.image.resize_nearest_neighbor(decode_z3,[1001,1001]),decode_w4,[1,2,2,1],'SAME')+decode_b4
         decode_z4=tensorflow.layers.batch_normalization(decode_z4,training=is_train,name='bn4')
         decode_z4=tensorflow.nn.tanh(decode_z4)
         decode_z4=tensorflow.clip_by_value(decode_z4*128+128,0,255,name='decode_image')
@@ -93,11 +93,10 @@ with tensorflow.control_dependencies(tensorflow.get_collection(tensorflow.GraphK
 Saver = tensorflow.train.Saver(max_to_keep=0,filename='cnn')
 
 Session=tensorflow.Session()
-Saver.restore(Session,'model/-4087061')
-# if tensorflow.train.latest_checkpoint(model_dir):
-#     Saver.restore(Session,tensorflow.train.latest_checkpoint(model_dir))
-# else:
-#     Session.run(tensorflow.global_variables_initializer())
+if tensorflow.train.latest_checkpoint(model_dir):
+    Saver.restore(Session,tensorflow.train.latest_checkpoint(model_dir))
+else:
+    Session.run(tensorflow.global_variables_initializer())
 
 tensorflow.summary.scalar('loss', loss)
 tensorflow.summary.image('input_images', input_image, 61)
