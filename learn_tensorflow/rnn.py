@@ -6,18 +6,21 @@ hidden_dim=200
 output_dim=100
 batch_size=10
 
-iw=tensorflow.get_variable('iw',[input_dim,hidden_dim])
-ib=tensorflow.get_variable('ib',hidden_dim)
-sw=tensorflow.get_variable('sw',[hidden_dim,hidden_dim])
-sb=tensorflow.get_variable('sb',hidden_dim) 
-ow=tensorflow.get_variable('ow',[hidden_dim,output_dim])
-ob=tensorflow.get_variable('ob',output_dim)
-
 def rnn(s_old,x):
+    iw=tensorflow.get_variable('iw',[input_dim,hidden_dim])
+    ib=tensorflow.get_variable('ib',hidden_dim)
     i=tensorflow.matmul(x,iw)+ib  
+
+    sw=tensorflow.get_variable('sw',[hidden_dim,hidden_dim])
+    sb=tensorflow.get_variable('sb',hidden_dim) 
     s=tensorflow.matmul(s_old,sw)+sb
+    
     s_new=tensorflow.nn.relu(i+s)
+
+    ow=tensorflow.get_variable('ow',[hidden_dim,output_dim])
+    ob=tensorflow.get_variable('ob',output_dim)
     o=tensorflow.matmul(s_new,ow)+ob
+
     return s_new,o
 
 input_data=tensorflow.placeholder(tensorflow.float32,[None,input_dim])
