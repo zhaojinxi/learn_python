@@ -134,7 +134,7 @@ def gru_process(input_code):
             all_output_encode.append(output_hide)
         else:
             output_hide=convgru_encode(output_hide,input_code[:,i,:,:,:])
-            all_output_encode.append(output_hide)
+            all_output_encode.append(tensorflow.reshape(output_hide,[batch_size,1,32,32,32]))
 
     all_output_decode=[]
     for i in range(30):
@@ -145,17 +145,17 @@ def gru_process(input_code):
 
 len([x.name for x in tensorflow.get_collection(tensorflow.GraphKeys.GLOBAL_VARIABLES)])
 
-input_image=tensorflow.placeholder(tensorflow.float32,[batch_size,61,32,32,32],name='input_image')
+input_image=tensorflow.placeholder(tensorflow.float32,[batch_size,61,501,501,1],name='input_image')
 output_image=tensorflow.placeholder(tensorflow.float32,[None,501,501,1],name='output_image')
 global_step = tensorflow.get_variable('global_step',initializer=0, trainable=False)
 learning_rate=tensorflow.train.exponential_decay(init_lr,global_step,max_step,decay_rate)
 
-tensorflow.unstack()
-cnn_encode_result=cnn_encode(input_image)
+cnn_encode_result=tensorflow.map_fn(cnn_encode,input_image)
 gru_result=gru_process(cnn_encode_result)
-cnn_decode_result=cnn_decode(gru_result)
+pre_result=tensorflow.stack(gru_result[1],1)
+cnn_decode_result=tensorflow.map_fn(cnn_decode,pre_result)
 
-loss=tensorflow.losses.mean_squared_error(input_image,cnn_decode_result)
+loss=tensorflow.losses.mean_squared_error(input_image[:,31:,:,:],cnn_decode_result)
 
 minimize=tensorflow.train.AdamOptimizer(learning_rate).minimize(loss,global_step=global_step,name='minimize')
 
@@ -169,19 +169,32 @@ else:
 
 tensorflow.summary.scalar('loss', loss)
 tensorflow.summary.image('input_images', input_image, 10)
-tensorflow.summary.image('output_images', decode_z4, 10)
+tensorflow.summary.image('output_images', output_image, 10)
 merge_all = tensorflow.summary.merge_all()
 FileWriter = tensorflow.summary.FileWriter(log_dir, Session.graph)
 
 for _ in range(max_step):
     all_file=os.listdir(data_dir)
-    pick_one_file=random.sample(all_file,1)[0]
-    one_file=os.path.join(data_dir,pick_one_file)
-    one_all_rad=os.listdir(one_file)
-    pick_one_rad=random.sample(one_all_rad,1)[0]
-    one_rad=os.path.join(one_file,pick_one_rad)
-    all_image_dir=[os.path.join(one_rad,x) for x in os.listdir(one_rad)]
-    all_image_dir.sort()
+    pick_files=random.sample(all_file,batch_file)
+    files=[os.path.join(data_dir,x) for x in pick_files]
+    all_rad=[os.listdir(x) for x in files]
+    pick_rads=[random.sample(x,batch_rad) for x in all_rad]
+    rads=[[os.path.join(files[x],y) for y in pick_rads[x]] for x in range(len(files))]
+    all_image_dir=[]
+    for x in rads:
+        for y in x:
+            image_dir=[os.path.join(y,z) for z in os.listdir(y)]
+            image_dir.sort()
+            all_image_dir.append(image_dir)
+    all_image=[]
+
+    for x in all_image_dir:
+        k1=[]
+        for y in x:
+            k1.append(cv2.imread(y))
+        all_image.append(k1)
+    all_image=numpy.array(all_image)
+    encode_image=get_encode(all_image).reshape((batch_size,61,32,32,64))
     Session=tensorflow.Session()
     all_image=[tensorflow.read_file(x) for x in all_image_dir]
     all_image=tensorflow.convert_to_tensor([tensorflow.image.decode_jpeg(x,channels=3) for x in all_image])
