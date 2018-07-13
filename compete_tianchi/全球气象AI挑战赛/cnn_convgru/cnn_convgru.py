@@ -3,16 +3,17 @@ import numpy
 import os
 import random
 import time
+import cv2
 
 # data_dir='E:/SRAD2018/train'
-data_dir='/media/zhao/新加卷/SRAD2018/train'
-# data_dir='/home/jxzhao/tianchi/SRAD2018/train'
+# data_dir='/media/zhao/新加卷/SRAD2018/train'
+data_dir='/home/jxzhao/tianchi/SRAD2018/train'
 log_dir='log/'
 model_dir='model/'
 init_lr=0.001
 decay_rate=0.01
-batch_file=2
-batch_rad=2
+batch_file=1
+batch_rad=1
 batch_size=batch_file*batch_rad
 max_step=300000//batch_size+1
 input_channel=1
@@ -20,7 +21,6 @@ encode_channel1=4
 encode_channel2=8
 encode_channel3=16
 encode_channel4=32
-output_channel=1
 
 def cnn_encode(x):
     with tensorflow.variable_scope('cnn_encode', reuse=tensorflow.AUTO_REUSE):
@@ -146,16 +146,16 @@ def gru_process(input_code):
 len([x.name for x in tensorflow.get_collection(tensorflow.GraphKeys.GLOBAL_VARIABLES)])
 
 input_image=tensorflow.placeholder(tensorflow.float32,[batch_size,61,501,501,1],name='input_image')
-output_image=tensorflow.placeholder(tensorflow.float32,[None,501,501,1],name='output_image')
-global_step = tensorflow.get_variable('global_step',initializer=0, trainable=False)
-learning_rate=tensorflow.train.exponential_decay(init_lr,global_step,max_step,decay_rate)
+global_step = tensorflow.get_variable('global_step',initializer=0,trainable=False)
+learning_rate=tensorflow.train.exponential_decay(init_lr,global_step,max_step*30,decay_rate)
+which_opt = tensorflow.get_variable('which_opt',initializer=0,trainable=False)
 
 cnn_encode_result=tensorflow.map_fn(cnn_encode,input_image)
 gru_result=gru_process(cnn_encode_result)
 pre_result=tensorflow.stack(gru_result[1],1)
 cnn_decode_result=tensorflow.map_fn(cnn_decode,pre_result)
 
-loss=tensorflow.losses.mean_squared_error(input_image[:,31:,:,:],cnn_decode_result)
+loss=tensorflow.losses.mean_squared_error(input_image[:,31+which_opt,:,:,:],cnn_decode_result[:,which_opt,:,:,:])
 
 minimize=tensorflow.train.AdamOptimizer(learning_rate).minimize(loss,global_step=global_step,name='minimize')
 
@@ -168,8 +168,8 @@ else:
     Session.run(tensorflow.global_variables_initializer())
 
 tensorflow.summary.scalar('loss', loss)
-tensorflow.summary.image('input_images', input_image, 10)
-tensorflow.summary.image('output_images', output_image, 10)
+tensorflow.summary.image('input_images', input_image[0,31:,:,:,:], 10)
+tensorflow.summary.image('output_images', cnn_decode_result[0], 10)
 merge_all = tensorflow.summary.merge_all()
 FileWriter = tensorflow.summary.FileWriter(log_dir, Session.graph)
 
@@ -187,14 +187,22 @@ for _ in range(max_step):
             image_dir.sort()
             all_image_dir.append(image_dir)
     all_image=[]
-
     for x in all_image_dir:
         k1=[]
         for y in x:
             k1.append(cv2.imread(y))
         all_image.append(k1)
     all_image=numpy.array(all_image)
-    encode_image=get_encode(all_image).reshape((batch_size,61,32,32,64))
-    Session=tensorflow.Session()
-    all_image=[tensorflow.read_file(x) for x in all_image_dir]
-    all_image=tensorflow.convert_to_tensor([tensorflow.image.decode_jpeg(x,channels=3) for x in all_image])
+    try:
+        for j in range(30):
+            Session.run(minimize,feed_dict={input_image:all_image[:,:,:,:,0:1],which_opt:j})
+        if Session.run(global_step)%3000==30:
+            summary = Session.run(merge_all, feed_dict={input_image:all_image[:,:,:,:,0:1],which_opt:10})
+            FileWriter.add_summary(summary, Session.run(global_step))
+            Saver.save(Session, model_dir, global_step)
+            print(Session.run(loss,feed_dict={input_image:all_image[:,:,:,:,0:1]}))
+    except:
+        with open('log/异常数据目录.txt','a') as f:
+            f.write('异常数据:%s\n'%(rads))
+
+    print(Session.run(global_step))
