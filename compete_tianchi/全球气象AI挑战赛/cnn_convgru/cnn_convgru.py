@@ -1,5 +1,5 @@
 import tensorflow
-import numpy 
+import numpy
 import os
 import random
 import time
@@ -145,17 +145,18 @@ def gru_process(input_code):
 
 len([x.name for x in tensorflow.get_collection(tensorflow.GraphKeys.GLOBAL_VARIABLES)])
 
-input_image=tensorflow.placeholder(tensorflow.float32,[batch_size,61,501,501,1],name='input_image')
+train_image=tensorflow.placeholder(tensorflow.float32,[batch_size,31,501,501,1],name='train_image')
+answer_image=tensorflow.placeholder(tensorflow.float32,[batch_size,30,501,501,1],name='answer_image')
 global_step = tensorflow.get_variable('global_step',initializer=0,trainable=False)
 learning_rate=tensorflow.train.exponential_decay(init_lr,global_step,max_step*30,decay_rate)
 which_opt = tensorflow.get_variable('which_opt',initializer=0,trainable=False)
 
-cnn_encode_result=tensorflow.map_fn(cnn_encode,input_image)
+cnn_encode_result=tensorflow.map_fn(cnn_encode,train_image,name='cnn_encode_result')
 gru_result=gru_process(cnn_encode_result)
 pre_result=tensorflow.stack(gru_result[1],1)
-cnn_decode_result=tensorflow.map_fn(cnn_decode,pre_result)
+cnn_decode_result=tensorflow.map_fn(cnn_decode,pre_result,name='cnn_decode_result')
 
-loss=tensorflow.losses.mean_squared_error(input_image[:,31+which_opt,:,:,:],cnn_decode_result[:,which_opt,:,:,:])
+loss=tensorflow.losses.mean_squared_error(answer_image[:,which_opt,:,:,:],cnn_decode_result[:,which_opt,:,:,:])
 
 minimize=tensorflow.train.AdamOptimizer(learning_rate).minimize(loss,global_step=global_step,name='minimize')
 
@@ -168,7 +169,7 @@ else:
     Session.run(tensorflow.global_variables_initializer())
 
 tensorflow.summary.scalar('loss', loss)
-tensorflow.summary.image('input_images', input_image[0,31:,:,:,:], 10)
+tensorflow.summary.image('answer_images', answer_image[0,:,:,:,:], 10)
 tensorflow.summary.image('output_images', cnn_decode_result[0], 10)
 merge_all = tensorflow.summary.merge_all()
 FileWriter = tensorflow.summary.FileWriter(log_dir, Session.graph)
@@ -195,12 +196,12 @@ for _ in range(max_step):
     all_image=numpy.array(all_image)
     try:
         for j in range(30):
-            Session.run(minimize,feed_dict={input_image:all_image[:,:,:,:,0:1],which_opt:j})
+            Session.run(minimize,feed_dict={train_image:all_image[:,:31,:,:,0:1],answer_image:all_image[:,31:,:,:,0:1],which_opt:j})
         if Session.run(global_step)%3000==30:
-            summary = Session.run(merge_all, feed_dict={input_image:all_image[:,:,:,:,0:1],which_opt:10})
+            summary = Session.run(merge_all, feed_dict={train_image:all_image[:,:31,:,:,0:1],answer_image:all_image[:,31:,:,:,0:1],which_opt:10})
             FileWriter.add_summary(summary, Session.run(global_step))
             Saver.save(Session, model_dir, global_step)
-            print(Session.run(loss,feed_dict={input_image:all_image[:,:,:,:,0:1]}))
+            print(Session.run(loss,feed_dict={train_image:all_image[:,:31,:,:,0:1],answer_image:all_image[:,31:,:,:,0:1]}))
     except:
         with open('log/异常数据目录.txt','a') as f:
             f.write('异常数据:%s\n'%(rads))
