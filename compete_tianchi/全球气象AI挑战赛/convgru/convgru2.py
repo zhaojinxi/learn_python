@@ -61,34 +61,19 @@ def predict(x):
         z=tensorflow.clip_by_value(z*128+128,0,255)
     return z
 
-def train_stage(input_image):
-    all_output=[]
+def process(input_image):
     init_hide=numpy.zeros([batch_size,501,501,hide_dim]).astype(numpy.float32)
-    for i in range(61):
-        if i==0:
-            output_hide=convgru(init_hide,input_image[:,i,:,:,:])
-            all_output.append(output_hide)
-        else:
-            output_hide=convgru(output_hide,input_image[:,i,:,:,:])
-            all_output.append(output_hide)
-
-    return all_output
-
-def precidt_stage(input_image):
     all_output=[]
-    init_hide=numpy.zeros([batch_size,501,501,hide_dim]).astype(numpy.float32)
     for i in range(31):
         if i==0:
             output_hide=convgru(init_hide,input_image[:,i,:,:,:])
-            all_output.append(output_hide)
+            all_output.append(predict(output_hide))
         else:
             output_hide=convgru(output_hide,input_image[:,i,:,:,:])
-            all_output.append(output_hide)
-
+            all_output.append(predict(output_hide))
     for i in range(31,61):
         output_hide=convgru(output_hide,predict(output_hide))
-        all_output.append(output_hide)           
-
+        all_output.append(predict(output_hide))
     return all_output
 
 len([x.name for x in tensorflow.get_collection(tensorflow.GraphKeys.GLOBAL_VARIABLES)])
@@ -96,17 +81,18 @@ len([x.name for x in tensorflow.get_collection(tensorflow.GraphKeys.GLOBAL_VARIA
 input_image=tensorflow.placeholder(tensorflow.float32,[batch_size,None,501,501,1],name='input_image')
 global_step = tensorflow.get_variable('global_step',initializer=0, trainable=False)
 learning_rate=tensorflow.train.exponential_decay(init_lr,global_step,max_step,decay_rate)
-which_minimize=tensorflow.placeholder(tensorflow.int32,name='which_minimize')
 
-train_output=train_stage(input_image)
-precidt_output=precidt_stage(input_image)
-train_decode_image=tensorflow.map_fn(predict,tensorflow.stack(train_output,1),name='train_decode_image')
-predict_decode_image=tensorflow.map_fn(predict,tensorflow.stack(precidt_output,1),name='predict_decode_image')
+process_image=process(input_image)
 
-loss=tensorflow.losses.mean_squared_error(train_decode_image[:,which_minimize,:,:,:],input_image[:,which_minimize+1,:,:,:])
+for i in range(61):
+    locals()['loss%s'%i]=tensorflow.losses.mean_squared_error(process_image[i],input_image[:,i+1,:,:,:])
 
-with tensorflow.control_dependencies(tensorflow.get_collection(tensorflow.GraphKeys.UPDATE_OPS)):
-    minimize=tensorflow.train.AdamOptimizer(learning_rate).minimize(loss,global_step=global_step,name='minimize')
+AdamOptimizer=tensorflow.train.AdamOptimizer(learning_rate)
+for i in range(61):
+    if i==0:
+        locals()['minimize%s'%i]=AdamOptimizer.minimize(locals()['loss%s'%i],global_step=global_step,name='minimize%s'%i)
+    else:
+        locals()['minimize%s'%i]=AdamOptimizer.minimize(locals()['loss%s'%i],name='minimize%s'%i)
 
 Saver = tensorflow.train.Saver(max_to_keep=0,filename='convgru')
 
@@ -116,9 +102,24 @@ if tensorflow.train.latest_checkpoint(model_dir):
 else:
     Session.run(tensorflow.global_variables_initializer())
 
-tensorflow.summary.scalar('loss', loss)
-tensorflow.summary.image('true image',input_image[0,31:],10)
-tensorflow.summary.image('predict image',predict_decode_image[0,30:],10)
+tensorflow.summary.scalar('loss1', loss4)
+tensorflow.summary.scalar('loss2', loss9)
+tensorflow.summary.scalar('loss3', loss14)
+tensorflow.summary.scalar('loss4', loss19)
+tensorflow.summary.scalar('loss5', loss24)
+tensorflow.summary.scalar('loss6', loss29)
+tensorflow.summary.image('true image1',input_image[0,35],batch_size)
+tensorflow.summary.image('true image2',input_image[0,40],batch_size)
+tensorflow.summary.image('true image3',input_image[0,45],batch_size)
+tensorflow.summary.image('true image4',input_image[0,50],batch_size)
+tensorflow.summary.image('true image5',input_image[0,55],batch_size)
+tensorflow.summary.image('true image6',input_image[0,60],batch_size)
+tensorflow.summary.image('predict image1',process_image[34],batch_size)
+tensorflow.summary.image('predict image2',process_image[39],batch_size)
+tensorflow.summary.image('predict image3',process_image[44],batch_size)
+tensorflow.summary.image('predict image4',process_image[49],batch_size)
+tensorflow.summary.image('predict image5',process_image[54],batch_size)
+tensorflow.summary.image('predict image6',process_image[59],batch_size)
 merge_all = tensorflow.summary.merge_all()
 FileWriter = tensorflow.summary.FileWriter(log_dir, Session.graph)
 
@@ -143,11 +144,12 @@ for _ in range(max_step):
         all_image.append(k1)
     all_image=numpy.array(all_image).reshape(batch_size,61,501,501,1)
 
-    Session.run(minimize,feed_dict={input_image:all_image})
+    for i in range(60):
+        Session.run(locals()['minimize%s'%i],feed_dict={input_image:all_image})
     if Session.run(global_step)%100==1:
         summary = Session.run(merge_all, feed_dict={input_image:all_image})
         FileWriter.add_summary(summary, Session.run(global_step))
         Saver.save(Session, model_dir, global_step)
-        print(Session.run(loss,feed_dict={input_image:all_image}))
+        print(Session.run(locals()['loss%s'%i],feed_dict={input_image:all_image}))
 
     print(Session.run(global_step))
