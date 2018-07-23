@@ -19,8 +19,40 @@ input_dim=1
 hide_dim=4
 output_dim=1
 
-def convgru(h_old,x):
-    with tensorflow.variable_scope('convgru', reuse=tensorflow.AUTO_REUSE):
+def convgru_encode(h_old,x):
+    with tensorflow.variable_scope('convgru_encode', reuse=tensorflow.AUTO_REUSE):
+        rxw=tensorflow.get_variable('rxw',[3,3,input_dim,hide_dim])
+        rhw=tensorflow.get_variable('rhw',[3,3,hide_dim,hide_dim])
+        rb=tensorflow.get_variable('rb',hide_dim)
+        rxw_r=tensorflow.nn.conv2d(x,rxw,[1,1,1,1],'SAME')
+        rhw_r=tensorflow.nn.conv2d(h_old,rhw,[1,1,1,1],'SAME')
+        rz=rxw_r+rhw_r+rb
+        rz=tensorflow.contrib.layers.layer_norm(rz)
+        r=tensorflow.nn.sigmoid(rz)
+
+        uxw=tensorflow.get_variable('uxw',[3,3,input_dim,hide_dim])
+        uhw=tensorflow.get_variable('uhw',[3,3,hide_dim,hide_dim])
+        ub=tensorflow.get_variable('ub',hide_dim)
+        uxw_r=tensorflow.nn.conv2d(x,uxw,[1,1,1,1],'SAME')
+        uhw_r=tensorflow.nn.conv2d(h_old,uhw,[1,1,1,1],'SAME')
+        uz=uxw_r+uhw_r+ub
+        uz=tensorflow.contrib.layers.layer_norm(uz)
+        u=tensorflow.nn.sigmoid(uz)
+
+        txw=tensorflow.get_variable('txw',[3,3,input_dim,hide_dim])
+        thw=tensorflow.get_variable('thw',[3,3,hide_dim,hide_dim])
+        tb=tensorflow.get_variable('tb',hide_dim)
+        txw_r=tensorflow.nn.conv2d(x,txw,[1,1,1,1],'SAME')
+        thw_r=tensorflow.nn.conv2d(r*h_old,thw,[1,1,1,1],'SAME')
+        tz=txw_r+thw_r+tb
+        tz=tensorflow.contrib.layers.layer_norm(tz)
+        t=tensorflow.nn.tanh(tz)
+
+        h_new=(1-u)*h_old+u*t
+        return h_new
+
+def convgru_decode(h_old,x):
+    with tensorflow.variable_scope('convgru_decode', reuse=tensorflow.AUTO_REUSE):
         rxw=tensorflow.get_variable('rxw',[3,3,input_dim,hide_dim])
         rhw=tensorflow.get_variable('rhw',[3,3,hide_dim,hide_dim])
         rb=tensorflow.get_variable('rb',hide_dim)
