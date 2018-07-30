@@ -58,8 +58,7 @@ def predict(x):
         z=tensorflow.matmul(x,w)+b
     return z
 
-def process(data):
-    init_hide=numpy.zeros([batch_size,hidden_dim]).astype(numpy.float32)
+def process(data,init_hide):
     encode_output=[]
     for i in range(28):
         if i==0:
@@ -77,8 +76,9 @@ input_data=tensorflow.placeholder(tensorflow.float32,[None,28,28],name='input_da
 input_label=tensorflow.placeholder(tensorflow.float32,[None,10],name='input_label')
 global_step = tensorflow.get_variable('global_step',initializer=0, trainable=False)
 learning_rate=tensorflow.train.exponential_decay(init_lr,global_step,max_step,decay_rate)
+init_hide=tensorflow.placeholder(tensorflow.float32,[None,hidden_dim],name='init_hide')
 
-process_result=process(input_data)
+process_result=process(input_data,init_hide)
 
 loss=tensorflow.losses.softmax_cross_entropy(input_label,process_result)
 
@@ -97,11 +97,11 @@ merge_all = tensorflow.summary.merge_all()
 FileWriter = tensorflow.summary.FileWriter(log_dir, Session.graph)
 
 num = train_data.shape[0] // batch_size
-for i in range(max_step*repeat_times//batch_size):
+for i in range(max_step*repeat_times//batch_size+1):
     temp_train = train_data[i % num * batch_size:i % num * batch_size + batch_size,:]
     temp_label = train_label[i % num * batch_size:i % num * batch_size + batch_size,:]
-    Session.run(minimize,feed_dict={input_data:temp_train,input_label:temp_label})
+    Session.run(minimize,feed_dict={input_data:temp_train,input_label:temp_label,init_hide:numpy.zeros([batch_size,hidden_dim])})
     if Session.run(global_step)%100==1:
-        summary = Session.run(merge_all, feed_dict={input_data:test_data,input_label:test_label})
+        summary = Session.run(merge_all, feed_dict={input_data:test_data,input_label:test_label,init_hide:numpy.zeros([test_data.shape[0],hidden_dim])})
         FileWriter.add_summary(summary, Session.run(global_step))
     print(Session.run(global_step))

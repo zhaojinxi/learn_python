@@ -25,7 +25,7 @@ test_label=OneHotEncoder.transform(test_label.reshape(-1,1)).toarray()
 def RNN(x):
     cell = tensorflow.contrib.rnn.GRUCell(hidden_dim)
  
-    outputs, final_state = tensorflow.nn.dynamic_rnn(cell, x, initial_state=cell.zero_state(batch_size, dtype=tensorflow.float32), time_major=False)
+    outputs, final_state = tensorflow.nn.dynamic_rnn(cell, x, initial_state=cell.zero_state(tensorflow.shape(x)[0], dtype=tensorflow.float32), time_major=False)
  
     outputs = tensorflow.unstack(tensorflow.transpose(outputs, [1,0,2]))
     results = tensorflow.matmul(outputs[-1], tensorflow.get_variable('w',[hidden_dim,10])) + tensorflow.get_variable('b',10)
@@ -42,7 +42,7 @@ loss = tensorflow.losses.softmax_cross_entropy(y,pred)
 
 minimize = tensorflow.train.AdamOptimizer(learning_rate).minimize(loss,global_step=global_step,name='minimize')
 
-accuracy = tensorflow.reduce_mean(tensorflow.cast(tensorflow.equal(tensorflow.argmax(pred, 1), tensorflow.argmax(y, 1)), tensorflow.float32))
+accuracy = tensorflow.reduce_mean(tensorflow.cast(tensorflow.equal(tensorflow.argmax(tensorflow.nn.softmax(pred), 1), tensorflow.argmax(y, 1)), tensorflow.float32))
 
 Session=tensorflow.Session()
 Session.run(tensorflow.global_variables_initializer())
