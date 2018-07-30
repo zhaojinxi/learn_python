@@ -52,10 +52,10 @@ next_element = iterator.get_next()
 train_init_op = iterator.make_initializer(train_dataset)
 test_init_op = iterator.make_initializer(test_dataset)
 Session=tensorflow.Session()
-Session.run(train_init_op,feed_dict={train_data_placeholder: train_data,train_label_placeholder:train_label})
+Session.run(train_init_op,feed_dict={train_data_placeholder:train_data, train_label_placeholder:train_label})
 for i in range(3):
     print(Session.run(next_element))
-Session.run(test_init_op,feed_dict={test_data_placeholder: test_data,test_label_placeholder:test_label})
+Session.run(test_init_op,feed_dict={test_data_placeholder:test_data, test_label_placeholder:test_label})
 for i in range(3):
     print(Session.run(next_element))
 Session.close()
