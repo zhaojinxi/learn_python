@@ -3,6 +3,7 @@ import numpy
 import os
 import random
 import skimage.io
+import pandas
 
 # data_dir='E:/SRAD2018/train'
 # data_dir='/media/zhao/新加卷/SRAD2018/train'
@@ -10,7 +11,7 @@ data_dir='/home/jxzhao/tianchi/SRAD2018/train'
 log_dir='log/'
 model_dir='model/'
 init_lr=0.001
-decay_rate=0.01
+decay_rate=0.1
 max_step=300001
 input_dim=[501,1]
 layer_dim1=[251,4]
@@ -54,7 +55,7 @@ def encode(x,h_old1,h_old2,h_old3):
 
         conv_w1=tensorflow.get_variable('conv_w1', [3,3,input_dim[1],layer_dim1[1]], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
         conv_b1=tensorflow.get_variable('conv_b1', layer_dim1[1], initializer=tensorflow.constant_initializer(0))
-        conv_z1=tensorflow.nn.conv2d((x-128)/128+1,conv_w1,[1,2,2,1],'SAME')+conv_b1
+        conv_z1=tensorflow.nn.conv2d(x/80,conv_w1,[1,2,2,1],'SAME')+conv_b1
         conv_z1=tensorflow.contrib.layers.layer_norm(conv_z1)
         conv_z1=tensorflow.nn.selu(conv_z1)
 
@@ -102,7 +103,7 @@ def decode(x,h_old1,h_old2,h_old3):
         deconv_z3=tensorflow.nn.conv2d(tensorflow.image.resize_nearest_neighbor(gru_z3,[input_dim[0],input_dim[0]]),deconv_w3,[1,1,1,1],'SAME')+deconv_b3
         deconv_z3=tensorflow.contrib.layers.layer_norm(deconv_z3)
         deconv_z3=tensorflow.nn.tanh(deconv_z3)
-        deconv_z3=tensorflow.clip_by_value(deconv_z3*128+128,0,255,name='decode_image')
+        deconv_z3=tensorflow.clip_by_value(deconv_z3*80,-80,80,name='decode_image')
     return gru_z1, gru_z2, gru_z3, deconv_z3
 
 def process(input_image):
@@ -132,12 +133,12 @@ def process(input_image):
 
 len([x.name for x in tensorflow.get_collection(tensorflow.GraphKeys.GLOBAL_VARIABLES)])
 
-origin_image=tensorflow.placeholder(tensorflow.float32,[None,501,501,1],name='input_image')
-distinct_image=tensorflow.placeholder(tensorflow.float32,[None,501,501,1],name='input_image_new')
+origin_image=tensorflow.placeholder(tensorflow.float32,[None,501,501,1],name='origin_image')
+# distinct_image=tensorflow.placeholder(tensorflow.float32,[None,501,501,1],name='distinct_image')
 global_step = tensorflow.get_variable('global_step',initializer=0, trainable=False)
 learning_rate=tensorflow.train.exponential_decay(init_lr,global_step,max_step,decay_rate)
 
-process_image=process(distinct_image)
+process_image=process(origin_image)
 
 for i in range(6):
     locals()['loss%s'%i]=tensorflow.losses.mean_squared_error(process_image[i],origin_image[7+i:7+i+1])
@@ -187,20 +188,22 @@ for _ in range(max_step):
     one_rad=os.path.join(one_file,pick_one_rad)
     all_image_dir=[os.path.join(one_rad,x) for x in os.listdir(one_rad)]
     all_image_dir.sort()
+    all_image_dir=[all_image_dir[y] for y in [x*5 for x in range(13)]]
     all_image=[skimage.io.imread(x) for x in all_image_dir]
-    all_image=numpy.array(all_image).reshape(61,501,501,1)
-    all_image=all_image[[x*5 for x in range(13)]]
-    all_image_distinct=[]
-    for i,x in enumerate(all_image):
-        if i==0:
-            all_image_distinct.append(all_image[i])
-        else:
-            all_image_distinct.append(all_image[i]-all_image[i-1])
-    all_image_distinct=numpy.array(all_image_distinct)
+    all_image=[pandas.DataFrame(x) for x in all_image]
+    all_image=[x.where(x<=80,-80).values for x in all_image]
+    all_image=numpy.array(all_image).reshape(-1,501,501,1)
+    # all_image_distinct=[]
+    # for i,x in enumerate(all_image):
+    #     if i==0:
+    #         all_image_distinct.append(all_image[i])
+    #     else:
+    #         all_image_distinct.append(all_image[i]-all_image[i-1])
+    # all_image_distinct=numpy.array(all_image_distinct)
     for i in range(6):
-        Session.run(locals()['minimize%s'%i],feed_dict={distinct_image:all_image_distinct,origin_image:all_image})
+        Session.run(locals()['minimize%s'%i],feed_dict={origin_image:all_image})
     if Session.run(global_step)%1000==1:
-        summary = Session.run(merge_all, feed_dict={distinct_image:all_image_distinct,origin_image:all_image})
+        summary = Session.run(merge_all, feed_dict={origin_image:all_image})
         FileWriter.add_summary(summary, Session.run(global_step))
         Saver.save(Session, model_dir, global_step)
     print(Session.run(global_step))

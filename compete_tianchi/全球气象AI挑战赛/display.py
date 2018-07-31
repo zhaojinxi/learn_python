@@ -4,12 +4,13 @@ import cv2
 import time
 import skimage.io
 import random
-import matplotlib.pyplot
 import numpy
+import pandas
 
-for _ in range(10):
+for _ in range(3):
 
-    data_dir='E:/SRAD2018/train'
+    # data_dir='E:/SRAD2018/train'
+    data_dir='/media/zhao/新加卷/SRAD2018/train'
     all_file=os.listdir(data_dir)
     pick_one_file=random.sample(all_file,1)[0]
     one_file=os.path.join(data_dir,pick_one_file)
@@ -22,7 +23,8 @@ for _ in range(10):
         all_img_files.sort()
 
     for img_path in all_img_files:
-        im = cv2.imread(img_path)
+        im = skimage.io.imread(img_path)
+        im=pandas.DataFrame(im).where(im<=80,0).values
         cv2.imshow(os.path.join(pick_one_file,pick_one_rad), im)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
