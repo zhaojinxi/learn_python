@@ -19,7 +19,7 @@ Saver =tensorflow.train.import_meta_graph(tensorflow.train.latest_checkpoint(mod
 Session=tensorflow.Session()
 Saver.restore(Session,tensorflow.train.latest_checkpoint(model_dir))
 
-input_image=tensorflow.get_default_graph().get_tensor_by_name('input_image:0')
+input_image=tensorflow.get_default_graph().get_tensor_by_name('origin_image:0')
 image0=tensorflow.get_default_graph().get_tensor_by_name('decode/decode_image:0')
 image1=tensorflow.get_default_graph().get_tensor_by_name('decode_1/decode_image:0')
 image2=tensorflow.get_default_graph().get_tensor_by_name('decode_2/decode_image:0')
