@@ -52,10 +52,9 @@ def convgru(x,h_old,name,in_dim,out_dim):
 
 def encode(x,h_old1,h_old2,h_old3):
     with tensorflow.variable_scope('encode',reuse=tensorflow.AUTO_REUSE):
-
         conv_w1=tensorflow.get_variable('conv_w1', [3,3,input_dim[1],layer_dim1[1]], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
         conv_b1=tensorflow.get_variable('conv_b1', layer_dim1[1], initializer=tensorflow.constant_initializer(0))
-        conv_z1=tensorflow.nn.conv2d(x/80,conv_w1,[1,2,2,1],'SAME')+conv_b1
+        conv_z1=tensorflow.nn.conv2d(x,conv_w1,[1,2,2,1],'SAME')+conv_b1
         conv_z1=tensorflow.contrib.layers.layer_norm(conv_z1)
         conv_z1=tensorflow.nn.selu(conv_z1)
 
@@ -103,8 +102,14 @@ def decode(x,h_old1,h_old2,h_old3):
         deconv_z3=tensorflow.nn.conv2d(tensorflow.image.resize_nearest_neighbor(gru_z3,[input_dim[0],input_dim[0]]),deconv_w3,[1,1,1,1],'SAME')+deconv_b3
         deconv_z3=tensorflow.contrib.layers.layer_norm(deconv_z3)
         deconv_z3=tensorflow.nn.tanh(deconv_z3)
-        deconv_z3=tensorflow.clip_by_value(deconv_z3*80,-80,80,name='decode_image')
-    return gru_z1, gru_z2, gru_z3, deconv_z3
+
+    k=tensorflow.constant(-1,tensorflow.float32,[1,501,501,1])
+    loss_image=tensorflow.where(tensorflow.less(deconv_z3,0),k,deconv_z3)    
+
+    output_image=tensorflow.clip_by_value(deconv_z3*80,-80,80)
+    k=tensorflow.constant(255,tensorflow.float32,[1,501,501,1])
+    output_image=tensorflow.where(tensorflow.less(output_image,0),k,output_image)
+    return gru_z1, gru_z2, gru_z3, loss_image, output_image
 
 def process(input_image):
     init_hide1=numpy.zeros([1,251,251,layer_dim1[1]]).astype(numpy.float32)
@@ -118,30 +123,36 @@ def process(input_image):
         else:
             output_hide=encode(input_image[i:i+1],output_hide[0],output_hide[1],output_hide[2])
             encode_output.append(output_hide)
-    decode_output=[]
+    result=[]
     predict_output=[]
     for i in range(6):
         if i==0:
             output=decode(init_hide3,output_hide[2],output_hide[1],output_hide[0])
-            decode_output.append(output[:3])
             predict_output.append(output[3])
+            result.append(output[4])
         else:
             output=decode(init_hide3,output[0],output[1],output[2])
-            decode_output.append(output[:3])  
-            predict_output.append(output[3])     
-    return predict_output
+            predict_output.append(output[3])   
+            result.append(output[4])  
+    return predict_output, result
+
+def to_image(x):
+    x=tensorflow.clip_by_value(x*80,-80,80)
+    k=tensorflow.constant(255,tensorflow.float32,[1,501,501,1])
+    x=tensorflow.where(tensorflow.less(x,0),k,x)
+    return x
 
 len([x.name for x in tensorflow.get_collection(tensorflow.GraphKeys.GLOBAL_VARIABLES)])
 
 origin_image=tensorflow.placeholder(tensorflow.float32,[None,501,501,1],name='origin_image')
-# distinct_image=tensorflow.placeholder(tensorflow.float32,[None,501,501,1],name='distinct_image')
+trans_image=tensorflow.placeholder(tensorflow.float32,[None,501,501,1],name='trans_image')
 global_step = tensorflow.get_variable('global_step',initializer=0, trainable=False)
 learning_rate=tensorflow.train.exponential_decay(init_lr,global_step,max_step,decay_rate)
 
-process_image=process(origin_image)
+process_image, result=process(trans_image)
 
 for i in range(6):
-    locals()['loss%s'%i]=tensorflow.losses.mean_squared_error(process_image[i],origin_image[7+i:7+i+1])
+    locals()['loss%s'%i]=tensorflow.losses.mean_squared_error(process_image[i],trans_image[7+i:7+i+1])
 
 AdamOptimizer=tensorflow.train.AdamOptimizer(learning_rate)
 for i in range(6):
@@ -170,12 +181,12 @@ tensorflow.summary.image('true image3',origin_image[9:10])
 tensorflow.summary.image('true image4',origin_image[10:11])
 tensorflow.summary.image('true image5',origin_image[11:12])
 tensorflow.summary.image('true image6',origin_image[12:13])
-tensorflow.summary.image('predict image1',process_image[0])
-tensorflow.summary.image('predict image2',process_image[1])
-tensorflow.summary.image('predict image3',process_image[2])
-tensorflow.summary.image('predict image4',process_image[3])
-tensorflow.summary.image('predict image5',process_image[4])
-tensorflow.summary.image('predict image6',process_image[5])
+tensorflow.summary.image('predict image1',result[0])
+tensorflow.summary.image('predict image2',result[1])
+tensorflow.summary.image('predict image3',result[2])
+tensorflow.summary.image('predict image4',result[3])
+tensorflow.summary.image('predict image5',result[4])
+tensorflow.summary.image('predict image6',result[5])
 merge_all = tensorflow.summary.merge_all()
 FileWriter = tensorflow.summary.FileWriter(log_dir, Session.graph)
 
@@ -190,20 +201,13 @@ for _ in range(max_step):
     all_image_dir.sort()
     all_image_dir=[all_image_dir[y] for y in [x*5 for x in range(13)]]
     all_image=[skimage.io.imread(x) for x in all_image_dir]
-    all_image=[pandas.DataFrame(x) for x in all_image]
-    all_image=[x.where(x<=80,-80).values for x in all_image]
     all_image=numpy.array(all_image).reshape(-1,501,501,1)
-    # all_image_distinct=[]
-    # for i,x in enumerate(all_image):
-    #     if i==0:
-    #         all_image_distinct.append(all_image[i])
-    #     else:
-    #         all_image_distinct.append(all_image[i]-all_image[i-1])
-    # all_image_distinct=numpy.array(all_image_distinct)
+    all_image_new=numpy.where(all_image>80,-80,all_image)/80
+
     for i in range(6):
-        Session.run(locals()['minimize%s'%i],feed_dict={origin_image:all_image})
+        Session.run(locals()['minimize%s'%i],feed_dict={trans_image:all_image_new})
     if Session.run(global_step)%1000==1:
-        summary = Session.run(merge_all, feed_dict={origin_image:all_image})
+        summary = Session.run(merge_all, feed_dict={trans_image:all_image_new,origin_image:all_image})
         FileWriter.add_summary(summary, Session.run(global_step))
         Saver.save(Session, model_dir, global_step)
     print(Session.run(global_step))
