@@ -10,7 +10,7 @@ import pandas
 data_dir='/home/jxzhao/tianchi/SRAD2018/train'
 log_dir='log/'
 model_dir='model/'
-init_lr=0.001
+init_lr=0.1
 decay_rate=0.1
 max_step=300001
 input_dim=[501,1]
@@ -103,13 +103,10 @@ def decode(x,h_old1,h_old2,h_old3):
         deconv_z3=tensorflow.contrib.layers.layer_norm(deconv_z3)
         deconv_z3=tensorflow.nn.tanh(deconv_z3)
 
-    k=tensorflow.constant(-1,tensorflow.float32,[1,501,501,1])
-    loss_image=tensorflow.where(tensorflow.less(deconv_z3,0),k,deconv_z3)    
-
-    output_image=tensorflow.clip_by_value(deconv_z3*80,-80,80)
-    k=tensorflow.constant(255,tensorflow.float32,[1,501,501,1])
-    output_image=tensorflow.where(tensorflow.less(output_image,0),k,output_image)
-    return gru_z1, gru_z2, gru_z3, loss_image, output_image
+        deconv_z3=tensorflow.clip_by_value(deconv_z3,-0.5,1)
+        k=tensorflow.constant(255,tensorflow.float32,[1,501,501,1])
+        output_image=tensorflow.where(tensorflow.less(deconv_z3,0),k,deconv_z3*80)
+    return gru_z1, gru_z2, gru_z3, deconv_z3, output_image
 
 def process(input_image):
     init_hide1=numpy.zeros([1,251,251,layer_dim1[1]]).astype(numpy.float32)
@@ -135,12 +132,6 @@ def process(input_image):
             predict_output.append(output[3])   
             result.append(output[4])  
     return predict_output, result
-
-def to_image(x):
-    x=tensorflow.clip_by_value(x*80,-80,80)
-    k=tensorflow.constant(255,tensorflow.float32,[1,501,501,1])
-    x=tensorflow.where(tensorflow.less(x,0),k,x)
-    return x
 
 len([x.name for x in tensorflow.get_collection(tensorflow.GraphKeys.GLOBAL_VARIABLES)])
 
@@ -202,11 +193,11 @@ for _ in range(max_step):
     all_image_dir=[all_image_dir[y] for y in [x*5 for x in range(13)]]
     all_image=[skimage.io.imread(x) for x in all_image_dir]
     all_image=numpy.array(all_image).reshape(-1,501,501,1)
-    all_image_new=numpy.where(all_image>80,-80,all_image)/80
+    all_image_new=numpy.where(all_image>80,-40,all_image)/80
 
     for i in range(6):
         Session.run(locals()['minimize%s'%i],feed_dict={trans_image:all_image_new})
-    if Session.run(global_step)%1000==1:
+    if Session.run(global_step)%100==1:
         summary = Session.run(merge_all, feed_dict={trans_image:all_image_new,origin_image:all_image})
         FileWriter.add_summary(summary, Session.run(global_step))
         Saver.save(Session, model_dir, global_step)
