@@ -1,9 +1,4 @@
 import tensorflow
-import numpy 
-import os
-import cv2
-import random
-import time
 import sklearn.preprocessing
 
 log_dir='log/'
@@ -102,10 +97,10 @@ def bilinear_sampler(img, x, y):
     return out
 ############################################################
 
-def cnn(x):
+def model(x):
     with tensorflow.variable_scope('cnn'):
         stw=tensorflow.get_variable('stw', [28,28,1,6], initializer=tensorflow.constant_initializer(0))
-        stb=tensorflow.get_variable('stb', initializer=numpy.array([[1., 0, 0], [0, 1., 0]]).astype('float32').flatten())
+        stb=tensorflow.get_variable('stb', initializer=tensorflow.reshape(tensorflow.constant([[1., 0, 0], [0, 1., 0]]),[6]))
         stz=tensorflow.nn.conv2d(x,stw,[1,1,1,1],'VALID')+stb
         x=SpatialTransformer(x, tensorflow.reshape(stz,[-1,6]),[28,28])
 
@@ -137,7 +132,7 @@ input_label=tensorflow.placeholder(tensorflow.float32,[None,10],name='input_labe
 global_step = tensorflow.get_variable('global_step',initializer=0, trainable=False)
 learning_rate=tensorflow.train.exponential_decay(init_lr,global_step,max_step,decay_rate)
 
-resullt=cnn(input_data)
+resullt=model(input_data)
 
 loss=tensorflow.losses.softmax_cross_entropy(input_label,resullt)
 
