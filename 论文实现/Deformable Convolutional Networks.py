@@ -1,6 +1,11 @@
 import tensorflow
 import sklearn.preprocessing
 
+from tensorflow.keras.layers import Input, Conv2D, Activation, GlobalAvgPool2D, Dense, BatchNormalization
+from deform_conv.layers import ConvOffset2D
+
+tensorflow.enable_eager_execution()
+
 log_dir='log/'
 batch_size=50
 max_step=60000
@@ -21,9 +26,11 @@ def cnn(x):
         z1=tensorflow.nn.conv2d(x,w1,[1,2,2,1],'SAME')+b1
         z1=tensorflow.nn.selu(z1)
 
+        # l_offset = ConvOffset2D(8, name='conv12_offset')(z1)
+        l_offset = ConvOffset2D(8)(z1,name='conv12_offset')
         w2=tensorflow.get_variable('w2', [3,3,8,16], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
         b2=tensorflow.get_variable('b2', 16, initializer=tensorflow.constant_initializer(0))
-        z2=tensorflow.nn.conv2d(z1,w2,[1,2,2,1],'SAME')+b2
+        z2=tensorflow.nn.conv2d(l_offset,w2,[1,2,2,1],'SAME')+b2
         z2=tensorflow.nn.selu(z2)
 
         w3=tensorflow.get_variable('w3', [3,3,16,32], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
@@ -39,10 +46,11 @@ def cnn(x):
         z4=tensorflow.reshape(z4,[-1,10])
     return z4
 
-input_data=tensorflow.placeholder(tensorflow.float32,[None,28,28,1],name='input_data')
-input_label=tensorflow.placeholder(tensorflow.float32,[None,10],name='input_label')
-global_step = tensorflow.get_variable('global_step',initializer=0, trainable=False)
-learning_rate=tensorflow.train.exponential_decay(init_lr,global_step,max_step,decay_rate)
+# input_data=tensorflow.placeholder(tensorflow.float32,[None,28,28,1],name='input_data')
+# input_label=tensorflow.placeholder(tensorflow.float32,[None,10],name='input_label')
+# global_step = tensorflow.get_variable('global_step',initializer=0, trainable=False)
+# learning_rate=tensorflow.train.exponential_decay(init_lr,global_step,max_step,decay_rate)
+input_data=tensorflow.random_normal([10,28,28,1],name='input_data')
 
 resullt=cnn(input_data)
 
