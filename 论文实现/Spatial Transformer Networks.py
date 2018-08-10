@@ -15,7 +15,7 @@ train_label=OneHotEncoder.transform(train_label.reshape(-1,1)).toarray()
 test_label=OneHotEncoder.transform(test_label.reshape(-1,1)).toarray()
 
 ##########################Spatial Transformer Networks##################################
-def SpatialTransformer(input_fmap, theta, out_dims=None, **kwargs):
+def SpatialTransformer(input_fmap, theta, out_dims=None):
     theta = tensorflow.reshape(theta, [tensorflow.shape(input_fmap)[0], 2, 3])
 
     if out_dims:
@@ -99,28 +99,28 @@ def bilinear_sampler(img, x, y):
 
 def model(x):
     with tensorflow.variable_scope('cnn'):
-        stw=tensorflow.get_variable('stw', [28,28,1,6], initializer=tensorflow.constant_initializer(0))
+        stw=tensorflow.get_variable('stw', [28,28,1,6], initializer=tensorflow.zeros_initializer)
         stb=tensorflow.get_variable('stb', initializer=tensorflow.reshape(tensorflow.constant([[1., 0, 0], [0, 1., 0]]),[6]))
         stz=tensorflow.nn.conv2d(x,stw,[1,1,1,1],'VALID')+stb
-        x=SpatialTransformer(x, tensorflow.reshape(stz,[-1,6]),[28,28])
+        x=SpatialTransformer(x, tensorflow.reshape(stz,[-1,6]), [28,28])
 
         w1=tensorflow.get_variable('w1', [3,3,1,8], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
-        b1=tensorflow.get_variable('b1', 8, initializer=tensorflow.constant_initializer(0))
+        b1=tensorflow.get_variable('b1', 8, initializer=tensorflow.zeros_initializer)
         z1=tensorflow.nn.conv2d(x,w1,[1,2,2,1],'SAME')+b1
         z1=tensorflow.nn.selu(z1)
 
         w2=tensorflow.get_variable('w2', [3,3,8,16], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
-        b2=tensorflow.get_variable('b2', 16, initializer=tensorflow.constant_initializer(0))
+        b2=tensorflow.get_variable('b2', 16, initializer=tensorflow.zeros_initializer)
         z2=tensorflow.nn.conv2d(z1,w2,[1,2,2,1],'SAME')+b2
         z2=tensorflow.nn.selu(z2)
 
         w3=tensorflow.get_variable('w3', [3,3,16,32], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
-        b3=tensorflow.get_variable('b3', 32, initializer=tensorflow.constant_initializer(0))
+        b3=tensorflow.get_variable('b3', 32, initializer=tensorflow.zeros_initializer)
         z3=tensorflow.nn.conv2d(z2,w3,[1,2,2,1],'VALID')+b3
         z3=tensorflow.nn.selu(z3)
 
         w4=tensorflow.get_variable('w4', [3,3,32,10], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
-        b4=tensorflow.get_variable('b4', 10, initializer=tensorflow.constant_initializer(0))
+        b4=tensorflow.get_variable('b4', 10, initializer=tensorflow.zeros_initializer)
         z4=tensorflow.nn.conv2d(z3,w4,[1,1,1,1],'VALID')+b4
         z4=tensorflow.nn.selu(z4)
 
