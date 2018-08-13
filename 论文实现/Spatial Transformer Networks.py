@@ -1,10 +1,12 @@
 import tensorflow
 import sklearn.preprocessing
 
+# tensorflow.enable_eager_execution()
+
 log_dir='log/'
 batch_size=50
 max_step=60000
-repeat_times=30
+repeat_times=10
 init_lr=0.001
 decay_rate=0.1
 
@@ -57,7 +59,6 @@ def affine_grid_generator(height, width, theta):
 def bilinear_sampler(img, x, y):
     max_y=tensorflow.shape(img)[1] - 1
     max_x=tensorflow.shape(img)[2] - 1
-    zero = tensorflow.zeros([], dtype='int32')
 
     x = 0.5 * ((x + 1.0) * tensorflow.cast(max_x-1, 'float32'))
     y = 0.5 * ((y + 1.0) * tensorflow.cast(max_y-1, 'float32'))
@@ -67,10 +68,10 @@ def bilinear_sampler(img, x, y):
     y0 = tensorflow.cast(tensorflow.floor(y), 'int32')
     y1 = y0+1
 
-    x0 = tensorflow.clip_by_value(x0, zero, max_x)
-    x1 = tensorflow.clip_by_value(x1, zero, max_x)
-    y0 = tensorflow.clip_by_value(y0, zero, max_y)
-    y1 = tensorflow.clip_by_value(y1, zero, max_y)
+    x0 = tensorflow.clip_by_value(x0, 0, max_x)
+    x1 = tensorflow.clip_by_value(x1, 0, max_x)
+    y0 = tensorflow.clip_by_value(y0, 0, max_y)
+    y1 = tensorflow.clip_by_value(y1, 0, max_y)
 
     Ia = get_pixel_value(img, x0, y0)
     Ib = get_pixel_value(img, x0, y1)
@@ -131,7 +132,7 @@ input_data=tensorflow.placeholder(tensorflow.float32,[None,28,28,1],name='input_
 input_label=tensorflow.placeholder(tensorflow.float32,[None,10],name='input_label')
 global_step = tensorflow.get_variable('global_step',initializer=0, trainable=False)
 learning_rate=tensorflow.train.exponential_decay(init_lr,global_step,max_step,decay_rate)
-
+# input_data=tensorflow.random_normal([10,28,28,1],name='input_data')
 resullt=model(input_data)
 
 loss=tensorflow.losses.softmax_cross_entropy(input_label,resullt)

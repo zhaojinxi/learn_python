@@ -1,14 +1,14 @@
 import tensorflow
 import sklearn.preprocessing
 
-tensorflow.enable_eager_execution()
+# tensorflow.enable_eager_execution()
 
 log_dir='log/'
 batch_size=50
 max_step=60000
-repeat_times=5
+repeat_times=10
 init_lr=0.001
-decay_rate=0.01
+decay_rate=0.1
 
 (train_data,train_label),(test_data,test_label)=tensorflow.keras.datasets.mnist.load_data()
 OneHotEncoder=sklearn.preprocessing.OneHotEncoder()
@@ -17,84 +17,70 @@ train_label=OneHotEncoder.transform(train_label.reshape(-1,1)).toarray()
 test_label=OneHotEncoder.transform(test_label.reshape(-1,1)).toarray()
 
 ######################################################################
-def ConvOffset(filters, x, name):
-    w=tensorflow.get_variable(name, [3,3,filters,filters * 2], initializer=tensorflow.zeros_initializer)
-    offsets=tensorflow.nn.conv2d(x,w,[1,1,1,1],'SAME')
+def DeformableConvolution(x, offset):
+    batch=tensorflow.shape(x)[0]
+    height=tensorflow.shape(x)[1]
+    width=tensorflow.shape(x)[2]
+    channel=tensorflow.shape(x)[3]
 
-    x_shape = x.shape
+    grid=tensorflow.meshgrid(tensorflow.range(height),tensorflow.range(width))
+    grid=tensorflow.stack([grid[1],grid[0]],-1)
+    grid=tensorflow.expand_dims(grid,0)
+    grid=tensorflow.tile(grid,[batch,1,1,channel])
+    grid=tensorflow.cast(grid,tensorflow.float32)
+    offset_result=grid+offset
+    offset_result=tensorflow.reshape(offset_result,[batch,height,width,channel,2])
+    coord_height = tensorflow.clip_by_value(offset_result[:,:,:,:,0], 0, tensorflow.cast(height,tensorflow.float32) - 1)
+    coord_width=tensorflow.clip_by_value(offset_result[:,:,:,:,1], 0, tensorflow.cast(width,tensorflow.float32) - 1)
+    coordinate=tensorflow.stack([coord_height,coord_width],-1)
 
-    offsets = tensorflow.transpose(offsets, [0, 3, 1, 2])
-    offsets = tensorflow.reshape(offsets, (-1, x_shape[1], x_shape[2], 2))
-    ##############################删除#####################
-    offsets=tensorflow.stack([offsets[:,:,:,0]+0.1,offsets[:,:,:,1]+0.5], axis=-1)
-    ##############################删除#####################
-    x = tensorflow.transpose(x, [0, 3, 1, 2])
-    x = tensorflow.reshape(x, (-1, x_shape[1], x_shape[2]))
+    coord_left_top = tensorflow.cast(tensorflow.floor(coordinate), 'int32')
+    coord_right_bottom = tensorflow.cast(tensorflow.ceil(coordinate), 'int32')
+    coord_right_top = tensorflow.stack([coord_left_top[..., 0], coord_right_bottom[..., 1]], axis=-1)
+    coord_left_bottom = tensorflow.stack([coord_right_bottom[..., 0], coord_left_top[..., 1]], axis=-1)
+    
+    batch_idx = tensorflow.range(0, batch)
+    batch_idx = tensorflow.reshape(batch_idx, (batch, 1, 1, 1))
+    batch_idx = tensorflow.tile(batch_idx, (1, height, width, channel))
+    channel_idx = tensorflow.range(0,channel)
+    channel_idx = tensorflow.reshape(channel_idx, (1, 1, 1, channel))
+    channel_idx = tensorflow.tile(channel_idx, (batch, height, width, 1))
 
-    x_offset = tf_batch_map_offsets(x, offsets)
+    idx_left_top = tensorflow.stack([batch_idx, coord_left_top[:,:,:,:,0], coord_left_top[:,:,:,:,1], channel_idx], -1)    
+    val_left_top = tensorflow.gather_nd(x, idx_left_top)
 
-    x_offset = tensorflow.reshape(x_offset, (-1, x_shape[3], x_shape[1], x_shape[2]))
-    x_offset = tensorflow.transpose(x_offset, [0, 2, 3, 1])
+    idx_right_bottom = tensorflow.stack([batch_idx, coord_right_bottom[:,:,:,:,0], coord_right_bottom[:,:,:,:,1], channel_idx], -1)    
+    val_right_bottom = tensorflow.gather_nd(x, idx_right_bottom)    
 
-    return x_offset    
-###############################################################
-def tf_batch_map_offsets(input, offsets):
-    input_shape = tensorflow.shape(input)
-    batch_size = input_shape[0]
-    input_size = input_shape[1]
+    idx_right_top = tensorflow.stack([batch_idx, coord_right_top[:,:,:,:,0], coord_right_top[:,:,:,:,1], channel_idx], -1)    
+    val_right_top = tensorflow.gather_nd(x, idx_right_top)    
 
-    offsets = tensorflow.reshape(offsets, (batch_size, -1, 2))
-    grid = tensorflow.meshgrid(tensorflow.range(input_size), tensorflow.range(input_size), indexing='ij')
-    grid = tensorflow.stack(grid, axis=-1)
-    grid = tensorflow.cast(grid, 'float32')
-    grid = tensorflow.reshape(grid, (-1, 2))
-    grid = tensorflow.expand_dims(grid, 0)
-    grid = tensorflow.tile(grid, [batch_size, 1, 1])
-    coords = offsets + grid
-    ##########################################
-    n_coords = tensorflow.shape(coords)[1]
+    idx_left_bottom = tensorflow.stack([batch_idx, coord_left_bottom[:,:,:,:,0], coord_left_bottom[:,:,:,:,1], channel_idx], -1)    
+    val_left_bottom = tensorflow.gather_nd(x, idx_left_bottom)     
 
-    coords = tensorflow.clip_by_value(coords, 0, tensorflow.cast(input_size, 'float32') - 1)
-    coords_lt = tensorflow.cast(tensorflow.floor(coords), 'int32')
-    coords_rb = tensorflow.cast(tensorflow.ceil(coords), 'int32')
-    coords_rt = tensorflow.stack([coords_lt[..., 0], coords_rb[..., 1]], axis=-1)
-    coords_lb = tensorflow.stack([coords_rb[..., 0], coords_lt[..., 1]], axis=-1)
+    coord_minus_lt = offset_result - tensorflow.cast(coord_left_top, 'float32')
+    val_top = val_left_top + (val_right_top - val_left_top) * coord_minus_lt[..., 1]
+    val_bottom = val_left_bottom + (val_right_bottom - val_left_bottom) * coord_minus_lt[..., 1]
+    value_reslut = val_top + (val_bottom - val_top) * coord_minus_lt[..., 0]
 
-    a = tensorflow.expand_dims(tensorflow.range(batch_size), -1)
-    a = tensorflow.tile(a, [1, n_coords])
-    idx=tensorflow.reshape(a, [-1])
-
-    indices = tensorflow.stack([idx, tensorflow.reshape(coords_lt[..., 0],[-1]), tensorflow.reshape(coords_lt[..., 1],[-1])], axis=-1)
-    vals = tensorflow.gather_nd(input, indices)
-    vals_lt = tensorflow.reshape(vals, (batch_size, n_coords))   
-    indices = tensorflow.stack([idx, tensorflow.reshape(coords_rb[..., 0],[-1]), tensorflow.reshape(coords_rb[..., 1],[-1])], axis=-1)
-    vals = tensorflow.gather_nd(input, indices)
-    vals_rb = tensorflow.reshape(vals, (batch_size, n_coords))   
-    indices = tensorflow.stack([idx, tensorflow.reshape(coords_lb[..., 0],[-1]), tensorflow.reshape(coords_lb[..., 1],[-1])], axis=-1)
-    vals = tensorflow.gather_nd(input, indices)
-    vals_lb = tensorflow.reshape(vals, (batch_size, n_coords))  
-    indices = tensorflow.stack([idx, tensorflow.reshape(coords_rt[..., 0],[-1]), tensorflow.reshape(coords_rt[..., 1],[-1])], axis=-1)
-    vals = tensorflow.gather_nd(input, indices)
-    vals_rt = tensorflow.reshape(vals, (batch_size, n_coords))  
-
-    coords_offset_lt = coords - tensorflow.cast(coords_lt, 'float32')
-    vals_t = vals_lt + (vals_rt - vals_lt) * coords_offset_lt[..., 1]
-    vals_b = vals_lb + (vals_rb - vals_lb) * coords_offset_lt[..., 1]
-    mapped_vals = vals_t + (vals_b - vals_t) * coords_offset_lt[..., 0]
-    ###########################################  
-    return mapped_vals
+    return value_reslut
 ################################################################
+
 def cnn(x):
     with tensorflow.variable_scope('cnn'):
+        dcw1=tensorflow.get_variable('dcw1', [3,3,1,2], initializer=tensorflow.zeros_initializer)
+        dcb1=tensorflow.get_variable('dcb1', 2, initializer=tensorflow.zeros_initializer)
+        dcz1=tensorflow.nn.conv2d(x,dcw1,[1,1,1,1],'SAME')+dcb1
+        z1 = DeformableConvolution(x, dcz1)
+
         w1=tensorflow.get_variable('w1', [3,3,1,8], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
         b1=tensorflow.get_variable('b1', 8, initializer=tensorflow.constant_initializer(0))
         z1=tensorflow.nn.conv2d(x,w1,[1,2,2,1],'SAME')+b1
         z1=tensorflow.nn.selu(z1)
 
-        l_offset = ConvOffset(8,z1,'conv12_offset')
         w2=tensorflow.get_variable('w2', [3,3,8,16], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
         b2=tensorflow.get_variable('b2', 16, initializer=tensorflow.constant_initializer(0))
-        z2=tensorflow.nn.conv2d(l_offset,w2,[1,2,2,1],'SAME')+b2
+        z2=tensorflow.nn.conv2d(z1,w2,[1,2,2,1],'SAME')+b2
         z2=tensorflow.nn.selu(z2)
 
         w3=tensorflow.get_variable('w3', [3,3,16,32], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
@@ -110,11 +96,11 @@ def cnn(x):
         z4=tensorflow.reshape(z4,[-1,10])
     return z4
 
-# input_data=tensorflow.placeholder(tensorflow.float32,[None,28,28,1],name='input_data')
-# input_label=tensorflow.placeholder(tensorflow.float32,[None,10],name='input_label')
-# global_step = tensorflow.get_variable('global_step',initializer=0, trainable=False)
-# learning_rate=tensorflow.train.exponential_decay(init_lr,global_step,max_step,decay_rate)
-input_data=tensorflow.random_normal([10,28,28,1],name='input_data')
+input_data=tensorflow.placeholder(tensorflow.float32,[None,28,28,1],name='input_data')
+input_label=tensorflow.placeholder(tensorflow.float32,[None,10],name='input_label')
+global_step = tensorflow.get_variable('global_step',initializer=0, trainable=False)
+learning_rate=tensorflow.train.exponential_decay(init_lr,global_step,max_step,decay_rate)
+# input_data=tensorflow.random_normal([10,28,28,1],name='input_data',seed=1)
 
 resullt=cnn(input_data)
 

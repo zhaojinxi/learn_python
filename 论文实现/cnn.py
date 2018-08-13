@@ -4,9 +4,9 @@ import sklearn.preprocessing
 log_dir='log/'
 batch_size=50
 max_step=60000
-repeat_times=5
+repeat_times=10
 init_lr=0.001
-decay_rate=0.01
+decay_rate=0.1
 
 (train_data,train_label),(test_data,test_label)=tensorflow.keras.datasets.mnist.load_data()
 OneHotEncoder=sklearn.preprocessing.OneHotEncoder()
