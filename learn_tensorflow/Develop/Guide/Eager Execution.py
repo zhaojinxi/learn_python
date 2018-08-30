@@ -9,6 +9,7 @@ tf.executing_eagerly()        # => True
 x = [[2.]]
 m = tf.matmul(x, x)
 print("hello, {}".format(m))  # => "hello, [[4.]]"
+
 a = tf.constant([[1, 2],[3, 4]])
 print(a)
 # Broadcasting support
