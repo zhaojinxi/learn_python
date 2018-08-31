@@ -1,3 +1,4 @@
+import numpy
 import tensorflow
 import sklearn.preprocessing
 
@@ -12,8 +13,8 @@ decay_rate=0.1
 (train_data,train_label),(test_data,test_label)=tensorflow.keras.datasets.mnist.load_data()
 OneHotEncoder=sklearn.preprocessing.OneHotEncoder()
 OneHotEncoder.fit(train_label.reshape(-1,1))
-train_data=train_data.reshape(-1,28,28,1)
-test_data=test_data.reshape(-1,28,28,1)
+train_data=train_data.reshape(-1,28,28,1).astype(numpy.float32)
+test_data=test_data.reshape(-1,28,28,1).astype(numpy.float32)
 train_label=OneHotEncoder.transform(train_label.reshape(-1,1)).toarray()
 test_label=OneHotEncoder.transform(test_label.reshape(-1,1)).toarray()
 
