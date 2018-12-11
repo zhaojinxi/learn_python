@@ -7,7 +7,7 @@
     "editor.formatOnType": true,
     "explorer.confirmDelete": false,
     "explorer.confirmDragAndDrop": false,
-    "workbench.colorTheme": "Visual Studio Dark",
+    "workbench.colorTheme": "Default Dark+",
     "debug.openExplorerOnEnd": true,
     "terminal.integrated.fontSize": 20,
     "git.enableSmartCommit": true,
