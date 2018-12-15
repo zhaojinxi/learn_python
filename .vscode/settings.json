@@ -15,5 +15,7 @@
     "git.confirmSync": false,
     "python.pythonPath": "python",
     "python.jediEnabled": false,
+    "python.linting.enabled": false,
     "python.linting.pylintEnabled": false,
+    "python.globalModuleInstallation": true,
 }
