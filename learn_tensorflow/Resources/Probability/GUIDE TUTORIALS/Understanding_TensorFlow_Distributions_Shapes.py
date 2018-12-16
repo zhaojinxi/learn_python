@@ -98,3 +98,10 @@ three_poissons.log_prob([[1.], [10.], [50.], [100.]])
 three_poissons.log_prob(tf.constant([1., 10., 50., 100.])[..., tf.newaxis])
 
 # Multivariate distributions
+multinomial_distributions = [
+    tfd.Multinomial(total_count=100., probs=[.5, .4, .1], name='One Multinomial'),
+    tfd.Multinomial(total_count=[100., 1000.], probs=[.5, .4, .1], name='Two Multinomials Same Probs'),
+    tfd.Multinomial(total_count=100., probs=[[.5, .4, .1], [.1, .2, .7]], name='Two Multinomials Same Counts'),
+    tfd.Multinomial(total_count=[100., 1000.], probs=[[.5, .4, .1], [.1, .2, .7]], name='Two Multinomials Different Everything')]
+
+describe_distributions(multinomial_distributions)
