@@ -105,3 +105,52 @@ multinomial_distributions = [
     tfd.Multinomial(total_count=[100., 1000.], probs=[[.5, .4, .1], [.1, .2, .7]], name='Two Multinomials Different Everything')]
 
 describe_distributions(multinomial_distributions)
+
+describe_sample_tensor_shapes(multinomial_distributions, sample_shapes)
+
+two_multivariate_normals = tfd.MultivariateNormalDiag(
+    loc=[1., 2., 3.], scale_identity_multiplier=[1., 2.])
+
+two_multivariate_normals.log_prob([[[1., 2., 3.]], [[3., 4., 5.]]])
+
+two_multivariate_normals.log_prob(
+    tf.constant([[1., 2., 3.], [3., 4., 5.]])[:, tf.newaxis, :])
+
+two_multivariate_normals.log_prob(tf.constant([[1., 2., 3.], [3., 4., 5.]]))
+
+# Shape Manipulation Techniques
+six_way_multinomial = tfd.Multinomial(
+    total_count=1000., probs=[.3, .25, .2, .15, .08, .02])
+
+transformed_multinomial = tfd.TransformedDistribution(
+    distribution=six_way_multinomial,
+    bijector=tfb.Reshape(event_shape_out=[2, 3]))
+
+six_way_multinomial.log_prob([500., 100., 100., 150., 100., 50.])
+
+transformed_multinomial.log_prob([[500., 100., 100.], [150., 100., 50.]])
+
+two_by_five_bernoulli = tfd.Bernoulli(
+    probs=[[.05, .1, .15, .2, .25], [.3, .35, .4, .45, .5]],
+    name="Two By Five Bernoulli")
+
+pattern = [[1., 0., 0., 1., 0.], [0., 0., 1., 1., 1.]]
+two_by_five_bernoulli.log_prob(pattern)
+
+two_sets_of_five = tfd.Independent(
+    distribution=two_by_five_bernoulli,
+    reinterpreted_batch_ndims=1,
+    name="Two Sets Of Five")
+
+two_sets_of_five.log_prob(pattern)
+
+one_set_of_two_by_five = tfd.Independent(
+    distribution=two_by_five_bernoulli, reinterpreted_batch_ndims=2,
+    name="One Set Of Two By Five")
+one_set_of_two_by_five.log_prob(pattern)
+
+describe_sample_tensor_shapes(
+    [two_by_five_bernoulli,
+     two_sets_of_five,
+     one_set_of_two_by_five],
+    [[3, 5]])
