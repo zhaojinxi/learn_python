@@ -128,7 +128,7 @@ headcounts = tf.stack(counted, 0)
 
 observed_head_probs = []  # this will be the list of processed probability tensors
 for k, N in enumerate(n_trials_):
-    result_tensor = tfp.distributions.Beta(concentration1 = tf.to_float(1 + headcounts[k]), concentration0 = tf.to_float(1 + n_trials_[k] - headcounts[k])).prob(probs_of_heads)
+    result_tensor = tfp.distributions.Beta(concentration1 = tf.to_float(headcounts[k]), concentration0 = tf.to_float(n_trials_[k] - headcounts[k])).prob(probs_of_heads)
     observed_head_probs.append(result_tensor)
 
 observed_probs_heads = tf.stack(observed_head_probs, 0)
@@ -162,3 +162,8 @@ for i in range(len(n_trials_)):
     plt.autoscale(tight=True)
 plt.suptitle("Bayesian updating of posterior probabilities", y=1.02, fontsize=14)
 plt.tight_layout()
+plt.show()
+plt.close()
+
+#Example: Bug, or just sweet, unintended feature?
+
