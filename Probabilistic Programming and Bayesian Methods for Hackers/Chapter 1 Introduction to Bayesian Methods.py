@@ -1,5 +1,4 @@
 #@title Imports and Global Variables (make sure to run this cell)  { display-mode: "form" }
-from __future__ import absolute_import, division, print_function
 
 #@markdown This sets the warning status (default is `ignore`, since this notebook runs correctly)
 warning_status = "ignore"  #@param ["ignore", "always", "module", "once", "default", "error"]
