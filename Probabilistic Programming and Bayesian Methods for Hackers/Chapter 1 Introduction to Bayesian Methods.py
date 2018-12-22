@@ -7,7 +7,6 @@ warnings.filterwarnings(warning_status)
 with warnings.catch_warnings():
     warnings.filterwarnings(warning_status, category=DeprecationWarning)
     warnings.filterwarnings(warning_status, category=UserWarning)
-
 import numpy as np
 import os
 #@markdown This sets the styles of the plotting (default is styled like plots from [FiveThirtyeight.com](https://fivethirtyeight.com/))
@@ -15,9 +14,7 @@ matplotlib_style = 'fivethirtyeight'  #@param ['fivethirtyeight', 'bmh', 'ggplot
 import matplotlib.pyplot as plt; plt.style.use(matplotlib_style)
 import matplotlib.axes as axes;
 from matplotlib.patches import Ellipse
-
 import seaborn as sns; sns.set_context('notebook')
-
 import tensorflow as tf
 tfe = tf.contrib.eager
 
@@ -49,10 +46,7 @@ def evaluate(tensors):
         `EagerTensor`s replaced by Numpy `ndarray`s.
     """
     if tf.executing_eagerly():
-        return tf.contrib.framework.nest.pack_sequence_as(
-            tensors,
-            [t.numpy() if tf.contrib.framework.is_tensor(t) else t
-             for t in tf.contrib.framework.nest.flatten(tensors)])
+        return tf.contrib.framework.nest.pack_sequence_as(tensors, [t.numpy() if tf.contrib.framework.is_tensor(t) else t for t in tf.contrib.framework.nest.flatten(tensors)])
     return sess.run(tensors)
 
 class _TFColor(object):
@@ -115,3 +109,56 @@ def reset_sess(config=None):
     sess = tf.InteractiveSession(config=config)
 
 reset_sess()
+
+# Example: Mandatory coin-flip example
+
+# Build graph.
+probs_of_heads = tf.linspace(start=0., stop=1., num=100, name="linspace")
+n_trials_ = [0, 1, 2, 3, 4, 5, 8, 15, 50, 500, 1000, 2000]
+coin_flip_prior = tfp.distributions.Bernoulli(probs=0.5)
+coin_flip_data = coin_flip_prior.sample(n_trials_[-1])
+
+n_trials_unpacked = tf.unstack(tf.constant(n_trials_))
+counted = []  # this will be the list of processed head count tensors
+for k, N in enumerate(n_trials_):
+    result_tensor = tf.reduce_sum(coin_flip_data[:N])
+    counted.append(result_tensor)
+
+headcounts = tf.stack(counted, 0)
+
+observed_head_probs = []  # this will be the list of processed probability tensors
+for k, N in enumerate(n_trials_):
+    result_tensor = tfp.distributions.Beta(concentration1 = tf.to_float(1 + headcounts[k]), concentration0 = tf.to_float(1 + n_trials_[k] - headcounts[k])).prob(probs_of_heads)
+    observed_head_probs.append(result_tensor)
+
+observed_probs_heads = tf.stack(observed_head_probs, 0)
+
+# Execute graph
+[
+    n_trials_unpacked_,
+    coin_flip_data_,
+    probs_of_heads_,
+    headcounts_,
+    observed_probs_heads_,
+] = evaluate([
+    n_trials_unpacked,
+    coin_flip_data,
+    probs_of_heads,
+    headcounts,
+    observed_probs_heads,
+])
+
+# For the already prepared, I'm using Binomial's conj. prior.
+plt.figure(figsize=(16, 9))
+for i in range(len(n_trials_)):
+    sx = plt.subplot(len(n_trials_)/2, 2, i+1)
+    plt.xlabel("$p$, probability of heads") if i in [0, len(n_trials_)-1] else None
+    plt.setp(sx.get_yticklabels(), visible=False)
+    plt.plot(probs_of_heads_, observed_probs_heads_[i],  label="observe %d tosses,\n %d heads" % (n_trials_[i], headcounts_[i]))
+    plt.fill_between(probs_of_heads_, 0, observed_probs_heads_[i],  color=TFColor[3], alpha=0.4)
+    plt.vlines(0.5, 0, 4, color="k", linestyles="--", lw=1)
+    leg = plt.legend()
+    leg.get_frame().set_alpha(0.4)
+    plt.autoscale(tight=True)
+plt.suptitle("Bayesian updating of posterior probabilities", y=1.02, fontsize=14)
+plt.tight_layout()
