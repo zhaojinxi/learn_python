@@ -162,3 +162,22 @@ for i in range(len(n_trials_)):
     plt.autoscale(tight=True)
 plt.suptitle("Bayesian updating of posterior probabilities", y=1.02, fontsize=14)
 plt.tight_layout()
+
+# Example: Bug, or just sweet, unintended feature?
+
+# Defining our range of probabilities
+p = tf.linspace(start=0., stop=1., num=50)
+
+# Convert from TF to numpy.
+[p_] = evaluate([p])
+
+# Visualization.
+plt.figure(figsize=(12.5, 6))
+plt.plot(p_, 2*p_/(1+p_), color=TFColor[3], lw=3)
+#plt.fill_between(p, 2*p/(1+p), alpha=.5, facecolor=["#A60628"])
+plt.scatter(0.2, 2*(0.2)/1.2, s=140, c=TFColor[3])
+plt.xlim(0, 1)
+plt.ylim(0, 1)
+plt.xlabel(r"Prior, $P(A) = p$")
+plt.ylabel(r"Posterior, $P(A|X)$, with $P(A) = p$")
+plt.title(r"Are there bugs in my code?");
