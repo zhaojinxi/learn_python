@@ -128,7 +128,7 @@ headcounts = tf.stack(counted, 0)
 
 observed_head_probs = []  # this will be the list of processed probability tensors
 for k, N in enumerate(n_trials_):
-    result_tensor = tfp.distributions.Beta(concentration1 = tf.to_float(1 + headcounts[k]), concentration0 = tf.to_float(1 + n_trials_[k] - headcounts[k])).prob(probs_of_heads)
+    result_tensor = tfp.distributions.Beta(concentration1 = tf.to_float(headcounts[k]), concentration0 = tf.to_float(n_trials_[k] - headcounts[k])).prob(probs_of_heads)
     observed_head_probs.append(result_tensor)
 
 observed_probs_heads = tf.stack(observed_head_probs, 0)
@@ -162,6 +162,8 @@ for i in range(len(n_trials_)):
     plt.autoscale(tight=True)
 plt.suptitle("Bayesian updating of posterior probabilities", y=1.02, fontsize=14)
 plt.tight_layout()
+plt.show()
+plt.close()
 
 # Example: Bug, or just sweet, unintended feature?
 
@@ -174,10 +176,116 @@ p = tf.linspace(start=0., stop=1., num=50)
 # Visualization.
 plt.figure(figsize=(12.5, 6))
 plt.plot(p_, 2*p_/(1+p_), color=TFColor[3], lw=3)
-#plt.fill_between(p, 2*p/(1+p), alpha=.5, facecolor=["#A60628"])
+plt.fill_between(p, 2*p/(1+p), alpha=.5, facecolor=["#A60628"])
 plt.scatter(0.2, 2*(0.2)/1.2, s=140, c=TFColor[3])
 plt.xlim(0, 1)
 plt.ylim(0, 1)
 plt.xlabel(r"Prior, $P(A) = p$")
 plt.ylabel(r"Posterior, $P(A|X)$, with $P(A) = p$")
 plt.title(r"Are there bugs in my code?");
+plt.show()
+plt.close()
+
+# Defining our priors and posteriors
+prior = tf.constant([0.20, 0.80])
+posterior = tf.constant([1./3, 2./3])
+
+# Convert from TF to numpy.
+[
+    prior_,
+    posterior_,
+] = evaluate([
+    prior,
+    posterior,
+])
+
+# Our Simple Visualization
+plt.figure(figsize=(12.5, 4))
+colours = [TFColor[0], TFColor[3]]
+plt.bar([0, .7], prior_, alpha=0.70, width=0.25,
+        color=colours[0], label="prior distribution",
+        lw="3", edgecolor=colours[0])
+plt.bar([0+0.25, .7+0.25], posterior_, alpha=0.7,
+        width=0.25, color=colours[1],
+        label=r"posterior distribution",
+        lw="3", edgecolor=colours[1])
+
+plt.xticks([0.20, .95], ["Bugs Absent", "Bugs Present"])
+plt.title(r"Prior and Posterior probability of bugs present")
+plt.ylabel("Probability")
+plt.legend(loc="upper left")
+plt.show()
+plt.close()
+
+#Probability Distributions
+
+# Build graph.
+grid_of_days = tf.range(start=0., limit=16.)
+texts_per_day = tf.constant([1.5, 4.25])
+text_count_probs = tfp.distributions.Poisson(rate=texts_per_day[:, tf.newaxis]).prob(grid_of_days)
+
+# Execute graph
+[
+  grid_of_days_,
+  texts_per_day_,
+  text_count_probs_,
+] = evaluate([
+  grid_of_days,
+  texts_per_day,
+  text_count_probs,
+])
+
+# Display results
+plt.figure(figsize=(12.5, 4))
+colours = [TFColor[0], TFColor[3]]
+plt.bar(grid_of_days_,
+        text_count_probs_[0],
+        color=colours[0],
+        label=r"$\lambda = %.1f$" % texts_per_day_[0], alpha=0.60,
+        edgecolor=colours[0], lw="3")
+
+plt.bar(grid_of_days_,
+        text_count_probs_[1],
+        color=colours[1],
+        label=r"$\lambda = %.1f$" % texts_per_day_[1], alpha=0.60,
+        edgecolor=colours[1], lw="3")
+
+plt.xticks(grid_of_days_ - 0.4, grid_of_days_)
+plt.legend()
+plt.ylabel(r"probability of $k$")
+plt.xlabel(r"$k$")
+plt.title(r"Probability mass function of a Poisson random variable; differing $\lambda$ values")
+plt.show()
+plt.close()
+
+# Defining our Data and assumptions (use tf.linspace for continuous)
+a = tf.range(start=0., limit=4., delta=0.04)
+a = a[..., tf.newaxis]
+lambdas = tf.constant([0.5, 1.])
+
+# Now we use TFP to compute probabilities in a vectorized manner.
+pdf_at_z = tfp.distributions.Exponential(rate=lambdas).prob(a)
+
+# Convert from TF to numpy
+[
+    a_,
+    lambdas_,
+    pdf_at_z_,
+] = evaluate([
+    a,
+    lambdas,
+    pdf_at_z,
+])
+
+# Visualizing our results
+plt.figure(figsize=(12.5, 4))
+for i in range(lambdas_.size):
+    plt.plot(a_.T[0], pdf_at_z_.T[[i]][0], lw=3, color=TFColor[i], label=r"$\lambda = %.1f$" % lambdas_[i])
+    plt.fill_between(a_.T[0], pdf_at_z_.T[[i]][0], color=TFColor[i], alpha=.33)
+plt.legend()
+plt.ylabel("PDF at $z$")
+plt.xlabel("$z$")
+plt.ylim(0,1.2)
+plt.title(r"Probability density function of an Exponential random variable; differing $\lambda$")
+plt.show()
+plt.close()
