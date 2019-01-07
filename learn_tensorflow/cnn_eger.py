@@ -45,10 +45,10 @@ def cnn(x):
         z4=tensorflow.reshape(z4,[-1,10])
     return z4
     
-global_step=tensorflow.train.get_or_create_global_step()
-learning_rate=tensorflow.train.exponential_decay(init_lr,global_step,max_step,decay_rate)
+global_step = tensorflow.train.get_or_create_global_step()
+learning_rate = tensorflow.train.exponential_decay(init_lr, global_step, max_step, decay_rate)
 
-AdamOptimizer=tensorflow.train.AdamOptimizer(learning_rate)
+AdamOptimizer = tensorflow.train.AdamOptimizer(learning_rate)
 
 writer = tensorflow.contrib.summary.create_file_writer(log_dir)
 writer.set_as_default()
@@ -72,6 +72,6 @@ for i in range(max_step+1):
             tensorflow.contrib.summary.scalar('test accuracy', test_accuracy, step=global_step)
 
     gradient=tape.gradient(loss,[w1,b1,w2,b2,w3,b3,w4,b4])
-    AdamOptimizer.apply_gradients(zip(gradient, [w1,b1,w2,b2,w3,b3,w4,b4]), global_step=global_step)
+    AdamOptimizer.apply_gradients(zip(gradient, [w1, b1, w2, b2, w3, b3, w4, b4]), global_step=global_step)
 
     print(global_step.numpy())

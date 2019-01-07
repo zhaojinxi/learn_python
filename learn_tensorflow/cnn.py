@@ -39,16 +39,17 @@ def cnn(x):
         z4=tensorflow.reshape(z4,[-1,10])
     return z4
 
-input_data=tensorflow.placeholder(tensorflow.float32,[None,28,28,1],name='input_data')
-input_label=tensorflow.placeholder(tensorflow.float32,[None,10],name='input_label')
+input_data = tensorflow.placeholder(tensorflow.float32, [None, 28, 28, 1], name='input_data')
+input_label = tensorflow.placeholder(tensorflow.float32, [None, 10], name='input_label')
 global_step = tensorflow.get_variable('global_step',initializer=0, trainable=False)
-learning_rate=tensorflow.train.exponential_decay(init_lr,global_step,max_step,decay_rate)
+learning_rate = tensorflow.train.exponential_decay(init_lr, global_step, max_step, decay_rate)
 
 resullt=cnn(input_data)
 
-loss=tensorflow.losses.softmax_cross_entropy(input_label,resullt)
+loss = tensorflow.losses.softmax_cross_entropy(input_label, resullt)
 
-minimize=tensorflow.train.AdamOptimizer(learning_rate).minimize(loss,global_step=global_step,name='minimize')
+AdamOptimizer = tensorflow.train.AdamOptimizer(learning_rate)
+minimize = AdamOptimizer.minimize(loss, global_step=global_step, name='minimize')
 
 accuracy = tensorflow.reduce_mean(tensorflow.cast(tensorflow.equal(tensorflow.argmax(tensorflow.nn.softmax(resullt), 1), tensorflow.argmax(input_label, 1)), tensorflow.float32))
 
