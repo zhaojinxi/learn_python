@@ -39,13 +39,13 @@ if __name__=='__main__':
     p.join()
     print('All subprocesses done.')
 
-r = subprocess.call(['nslookup', 'www.python.org'])
-print('subprocess.call:', r)
+call = subprocess.call(['nslookup', 'www.python.org'])
+print('subprocess.call:', call)
 
-p = subprocess.Popen(['nslookup'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-output, err = p.communicate(b'set q=mx\npython.org\nexit\n')
+Popen = subprocess.Popen(['nslookup'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+output, err = Popen.communicate(b'set q=mx\npython.org\nexit\n')
 print(output.decode('gb18030'))
-print('subprocess.Popen:', p.returncode)
+print('subprocess.Popen:', Popen.returncode)
 
 # 写数据进程执行的代码:
 def write(q):
