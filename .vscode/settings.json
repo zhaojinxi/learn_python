@@ -16,8 +16,6 @@
         "E402",
         "E501"
     ],
-    "extensions.ignoreRecommendations": true,
-    "debug.inlineValues": true,
     "debug.openExplorerOnEnd": true,
     "editor.fontSize": 20,
     "editor.wordWrap": "on",
@@ -26,9 +24,6 @@
     "editor.formatOnType": true,
     "editor.find.autoFindInSelection": true,
     "editor.renderWhitespace": "boundary",
-    "editor.autoClosingBrackets": "never",
-    "editor.autoClosingQuotes": "never",
-    "editor.mouseWheelZoom": true,
     "editor.renderControlCharacters": true,
     "editor.renderLineHighlight": "all",
     "editor.cursorSmoothCaretAnimation": true,
