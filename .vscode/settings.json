@@ -22,7 +22,6 @@
     "editor.wrappingIndent": "indent",
     "editor.formatOnPaste": true,
     "editor.formatOnType": true,
-    "editor.find.autoFindInSelection": true,
     "editor.renderWhitespace": "boundary",
     "editor.renderControlCharacters": true,
     "editor.renderLineHighlight": "all",
