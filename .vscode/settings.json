@@ -16,7 +16,6 @@
         "E402",
         "E501"
     ],
-    "debug.openExplorerOnEnd": true,
     "editor.fontSize": 20,
     "editor.wordWrap": "on",
     "editor.wrappingIndent": "indent",
@@ -29,4 +28,7 @@
     "files.trimTrailingWhitespace": true,
     "files.trimFinalNewlines": true,
     "files.autoSave": "afterDelay",
+    "debug.openDebug": "neverOpen",
+    "debug.openExplorerOnEnd": true,
+    "debug.internalConsoleOptions": "openOnSessionStart",
 }
