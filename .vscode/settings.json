@@ -6,16 +6,6 @@
     "git.enableSmartCommit": true,
     "git.autofetch": true,
     "git.confirmSync": false,
-    "python.pythonPath": "python",
-    "python.jediEnabled": false,
-    "python.linting.enabled": false,
-    "python.linting.pylintEnabled": false,
-    "python.globalModuleInstallation": true,
-    "python.formatting.autopep8Args": [
-        "W391",
-        "E402",
-        "E501"
-    ],
     "editor.fontSize": 20,
     "editor.wordWrap": "on",
     "editor.wrappingIndent": "indent",
@@ -31,4 +21,16 @@
     "debug.openDebug": "neverOpen",
     "debug.openExplorerOnEnd": true,
     "debug.internalConsoleOptions": "openOnSessionStart",
+    "python.pythonPath": "python",
+    "python.jediEnabled": false,
+    "python.linting.enabled": false,
+    "python.linting.pylintEnabled": false,
+    "python.globalModuleInstallation": true,
+    "python.formatting.autopep8Args": [
+        "W391",
+        "E402",
+        "E501"
+    ],
+    "python.dataScience.sendSelectionToInteractiveWindow": true,
+    "python.dataScience.changeDirOnImportExport": false,
 }
