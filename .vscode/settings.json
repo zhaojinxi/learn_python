@@ -27,7 +27,7 @@
     "debug.openDebug": "neverOpen",
     "debug.openExplorerOnEnd": true,
     "debug.internalConsoleOptions": "openOnSessionStart",
-    
+
     "python.pythonPath": "python",
     "python.jediEnabled": false,
     "python.linting.enabled": false,
@@ -38,6 +38,5 @@
         "E402",
         "E501"
     ],
-    "python.dataScience.sendSelectionToInteractiveWindow": true,
     "python.dataScience.changeDirOnImportExport": false,
 }
