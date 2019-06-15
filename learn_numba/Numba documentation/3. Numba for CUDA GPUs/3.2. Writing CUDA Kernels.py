@@ -1,3 +1,5 @@
+import numba.cuda as cuda
+
 @cuda.jit
 def increment_by_one(an_array):
     """
