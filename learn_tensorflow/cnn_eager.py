@@ -6,11 +6,11 @@ tensorflow.enable_eager_execution()
 
 log_train_dir = 'log_train/'
 log_test_dir = 'log_test/'
-model_dir = 'model/cnn'
+model_dir = 'model/'
 batch_size = 64
-epoch = 3
+epoch = 1
 max_step = 60000 / batch_size * epoch
-init_lr = 0.001
+init_lr = 0.01
 decay_rate = 0.1
 
 (train_image, train_label), (test_image, test_label) = tensorflow.keras.datasets.mnist.load_data()
@@ -60,15 +60,18 @@ class CNN(tensorflow.keras.Model):
 model = CNN()
 
 global_step = tensorflow.train.get_or_create_global_step()
-learning_rate = tensorflow.train.exponential_decay(init_lr, global_step, max_step, decay_rate)
+# learning_rate = tensorflow.train.exponential_decay(init_lr, global_step, max_step, decay_rate)
+learning_rate = tensorflow.train.cosine_decay(1e-2, global_step, max_step, 1e-4)
 
-Optimizer = tensorflow.train.AdamOptimizer(learning_rate)
+# Optimizer = tensorflow.train.AdamOptimizer(learning_rate)
+Optimizer = tensorflow.train.GradientDescentOptimizer(learning_rate)
 
 summary_writer = tensorflow.contrib.summary.create_file_writer(log_train_dir, flush_millis=10000)
 test_summary_writer = tensorflow.contrib.summary.create_file_writer(log_test_dir, flush_millis=10000)
 
-checkpoint = tensorflow.train.Checkpoint(model=model, optimizer=Optimizer, step_counter=global_step)
+checkpoint = tensorflow.train.Checkpoint(model=model)
 checkpoint.restore(tensorflow.train.latest_checkpoint(model_dir))
+checkpoint = tensorflow.train.Checkpoint(model=model, optimizer=Optimizer, step_counter=global_step)
 
 def compute_accuracy(logits, labels):
     predictions = tensorflow.argmax(logits, axis=1, output_type=tensorflow.int64)
