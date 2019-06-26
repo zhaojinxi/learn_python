@@ -25,36 +25,34 @@ test_dataset = tensorflow.data.Dataset.from_tensor_slices((test_image, test_labe
 class CNN(tensorflow.keras.Model):
     def __init__(self):
         super(CNN, self).__init__()
-        with tensorflow.variable_scope('cnn'):
-            self.w1 = tensorflow.get_variable('w1', [3, 3, 1, 8], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
-            self.b1 = tensorflow.get_variable('b1', 8, initializer=tensorflow.constant_initializer(0))
+        self.w1 = tensorflow.get_variable('w1', [3, 3, 1, 8], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
+        self.b1 = tensorflow.get_variable('b1', 8, initializer=tensorflow.constant_initializer(0))
 
-            self.w2 = tensorflow.get_variable('w2', [3, 3, 8, 16], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
-            self.b2 = tensorflow.get_variable('b2', 16, initializer=tensorflow.constant_initializer(0))
+        self.w2 = tensorflow.get_variable('w2', [3, 3, 8, 16], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
+        self.b2 = tensorflow.get_variable('b2', 16, initializer=tensorflow.constant_initializer(0))
 
-            self.w3 = tensorflow.get_variable('w3', [3, 3, 16, 32], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
-            self.b3 = tensorflow.get_variable('b3', 32, initializer=tensorflow.constant_initializer(0))
+        self.w3 = tensorflow.get_variable('w3', [3, 3, 16, 32], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
+        self.b3 = tensorflow.get_variable('b3', 32, initializer=tensorflow.constant_initializer(0))
 
-            self.w4 = tensorflow.get_variable('w4', [3, 3, 32, 10], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
-            self.b4 = tensorflow.get_variable('b4', 10, initializer=tensorflow.constant_initializer(0))
+        self.w4 = tensorflow.get_variable('w4', [3, 3, 32, 10], initializer=tensorflow.truncated_normal_initializer(stddev=0.1))
+        self.b4 = tensorflow.get_variable('b4', 10, initializer=tensorflow.constant_initializer(0))
 
     def call(self, x, training):
-        with tensorflow.variable_scope('cnn'):
-            z1 = tensorflow.nn.conv2d(x, self.w1, [1, 2, 2, 1], 'SAME') + self.b1
-            z1 = tensorflow.nn.selu(z1)
+        z1 = tensorflow.nn.conv2d(x, self.w1, [1, 2, 2, 1], 'SAME') + self.b1
+        z1 = tensorflow.nn.selu(z1)
 
-            z2 = tensorflow.nn.conv2d(z1, self.w2, [1, 2, 2, 1], 'SAME') + self.b2
-            z2 = tensorflow.nn.selu(z2)
+        z2 = tensorflow.nn.conv2d(z1, self.w2, [1, 2, 2, 1], 'SAME') + self.b2
+        z2 = tensorflow.nn.selu(z2)
 
-            z3 = tensorflow.nn.conv2d(z2, self.w3, [1, 2, 2, 1], 'VALID') + self.b3
-            z3 = tensorflow.nn.selu(z3)
+        z3 = tensorflow.nn.conv2d(z2, self.w3, [1, 2, 2, 1], 'VALID') + self.b3
+        z3 = tensorflow.nn.selu(z3)
 
-            z4 = tensorflow.nn.conv2d(z3, self.w4, [1, 1, 1, 1], 'VALID') + self.b4
-            z4 = tensorflow.nn.selu(z4)
+        z4 = tensorflow.nn.conv2d(z3, self.w4, [1, 1, 1, 1], 'VALID') + self.b4
+        z4 = tensorflow.nn.selu(z4)
 
-            z4 = tensorflow.reshape(z4, [-1, 10])
-            if training == False:
-                z4 = tensorflow.nn.softmax(z4)
+        z4 = tensorflow.reshape(z4, [-1, 10])
+        if training == False:
+            z4 = tensorflow.nn.softmax(z4)
         return z4
 
 model = CNN()
@@ -69,8 +67,10 @@ Optimizer = tensorflow.train.GradientDescentOptimizer(learning_rate)
 summary_writer = tensorflow.contrib.summary.create_file_writer(log_train_dir, flush_millis=10000)
 test_summary_writer = tensorflow.contrib.summary.create_file_writer(log_test_dir, flush_millis=10000)
 
-checkpoint = tensorflow.train.Checkpoint(model=model)
-checkpoint.restore(tensorflow.train.latest_checkpoint(model_dir))
+if tensorflow.train.latest_checkpoint(model_dir):
+    model.load_weights(tensorflow.train.latest_checkpoint(model_dir))
+# checkpoint = tensorflow.train.Checkpoint(model=model)
+# checkpoint.restore(tensorflow.train.latest_checkpoint(model_dir))
 checkpoint = tensorflow.train.Checkpoint(model=model, optimizer=Optimizer, step_counter=global_step)
 
 def compute_accuracy(logits, labels):
@@ -116,4 +116,5 @@ for _ in range(epoch):
     print('\nTrain time for epoch #%d (%d total steps)' % (checkpoint.save_counter.numpy() + 1, global_step.numpy()))
 
     test(model, test_dataset)
+    model.save
     checkpoint.save(model_dir)
