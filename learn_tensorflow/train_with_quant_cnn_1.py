@@ -6,7 +6,7 @@ import quant_model
 os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 log_dir = 'log/'
 model_dir = 'model/'
-batch_size = 128
+batch_size = 64
 repeat = 10
 init_lr = 0.001
 decay_rate = 0.1
@@ -16,6 +16,8 @@ max_step = numpy.ceil(total_data * repeat / batch_size).astype(numpy.int32)
 (train_image, train_label), (test_image, test_label) = tensorflow.keras.datasets.mnist.load_data()
 train_image = train_image.reshape(-1, 28, 28, 1).astype(numpy.float32)
 test_image = test_image.reshape(-1, 28, 28, 1).astype(numpy.float32)
+train_image = (train_image - 128) / 128
+test_image = (test_image - 128) / 128
 train_label = train_label.astype(numpy.int32)
 test_label = test_label.astype(numpy.int32)
 
@@ -31,7 +33,7 @@ test_predict = tensorflow.argmax(tensorflow.nn.softmax(logits), 1)
 loss = tensorflow.losses.sparse_softmax_cross_entropy(input_label, logits)
 
 g = tensorflow.get_default_graph()
-tensorflow.contrib.quantize.create_training_graph(input_graph=g, quant_delay=int(total_data / batch_size * repeat / 2))
+tensorflow.contrib.quantize.create_training_graph(input_graph=g, quant_delay=int(total_data / batch_size * repeat * 0.9))
 
 minimize = tensorflow.contrib.opt.NadamOptimizer(learning_rate).minimize(loss, global_step=global_step, name='minimize')
 

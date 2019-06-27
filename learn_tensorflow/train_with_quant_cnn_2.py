@@ -24,7 +24,7 @@ tensorflow.train.write_graph(g.as_graph_def(), model_dir, 'eval_graph_def.pb')
 os.system('''
     freeze_graph \
         --input_graph=model/eval_graph_def.pb \
-        --input_checkpoint=model/cnn-4680 \
+        --input_checkpoint=model/cnn-9370 \
         --output_graph=model/frozen_eval_graph.pb \
         --output_node_names=ArgMax
     ''')
@@ -39,6 +39,6 @@ os.system('''
         --input_shape="1,28,28,1" \
         --input_array=input_image \
         --output_array=ArgMax \
-        --std_dev_values=1 \
-        --mean_value=0
+        --std_dev_values=128 \
+        --mean_value=128
     ''')
