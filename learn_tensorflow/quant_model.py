@@ -9,12 +9,15 @@ def hard_swish(x):
     y = x * (tensorflow.nn.relu6(x + 3)) / 6
     return y
 
-def cnn(x):
+def cnn(x, training):
     with tensorflow.variable_scope('cnn', reuse=tensorflow.AUTO_REUSE):
         with tensorflow.variable_scope('conv1'):
             w1 = tensorflow.get_variable('w1', [3, 3, 1, 8], initializer=tensorflow.initializers.lecun_normal())
             b1 = tensorflow.get_variable('b1', 8, initializer=tensorflow.constant_initializer(0))
             z1 = tensorflow.nn.conv2d(x, w1, [1, 2, 2, 1], 'SAME') + b1
+
+            z1 = tensorflow.layers.batch_normalization(z1, training=training)
+
             z1 = tensorflow.nn.relu(z1)
             # z1 = hard_swish(z1)
             # z1 = prelu(z1, 1)
@@ -49,4 +52,4 @@ def cnn(x):
 if __name__ == '__main__':
     tensorflow.enable_eager_execution(config=tensorflow.ConfigProto(allow_soft_placement=True, gpu_options=tensorflow.GPUOptions(allow_growth=True)))
     data = tensorflow.random.uniform([4, 28, 28, 1])
-    predict = cnn(data)
+    predict = cnn(data, True)

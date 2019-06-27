@@ -23,10 +23,11 @@ test_label = test_label.astype(numpy.int32)
 
 input_image = tensorflow.placeholder(tensorflow.float32, [None, 28, 28, 1], name='input_image')
 input_label = tensorflow.placeholder(tensorflow.int32, [None], name='input_label')
+training = tensorflow.placeholder(tensorflow.bool, name='training')
 global_step = tensorflow.train.get_or_create_global_step()
 learning_rate = tensorflow.train.exponential_decay(init_lr, global_step, max_step, decay_rate)
 
-logits = quant_model.cnn(input_image)
+logits = quant_model.cnn(input_image, training)
 
 test_predict = tensorflow.argmax(tensorflow.nn.softmax(logits), 1)
 
@@ -35,7 +36,8 @@ loss = tensorflow.losses.sparse_softmax_cross_entropy(input_label, logits)
 g = tensorflow.get_default_graph()
 tensorflow.contrib.quantize.create_training_graph(input_graph=g, quant_delay=int(total_data / batch_size * repeat * 0.9))
 
-minimize = tensorflow.contrib.opt.NadamOptimizer(learning_rate).minimize(loss, global_step=global_step, name='minimize')
+with tensorflow.control_dependencies(tensorflow.get_collection(tensorflow.GraphKeys.UPDATE_OPS)):
+    minimize = tensorflow.contrib.opt.NadamOptimizer(learning_rate).minimize(loss, global_step=global_step, name='minimize')
 
 test_accuracy = tensorflow.reduce_mean(tensorflow.cast(tensorflow.equal(tensorflow.cast(test_predict, tensorflow.int32), input_label), tensorflow.float32))
 
@@ -52,11 +54,11 @@ FileWriter = tensorflow.summary.FileWriter(log_dir, Session.graph)
 num = total_data // batch_size
 for i in range(max_step):
     if Session.run(global_step) % int(total_data / batch_size) == 0:
-        summary = Session.run(merge_all, feed_dict={input_image: test_image, input_label: test_label})
+        summary = Session.run(merge_all, feed_dict={input_image: test_image, input_label: test_label, training: False})
         FileWriter.add_summary(summary, Session.run(global_step))
         Saver.save(Session, model_dir + 'cnn', global_step)
 
     temp_image = train_image[i % num * batch_size : i % num * batch_size + batch_size, :]
     temp_label = train_label[i % num * batch_size : i % num * batch_size + batch_size]
-    Session.run(minimize, feed_dict={input_image: temp_image, input_label: temp_label})
+    Session.run(minimize, feed_dict={input_image: temp_image, input_label: temp_label, training: True})
     print(Session.run(global_step))
