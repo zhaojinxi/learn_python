@@ -1,122 +1,80 @@
+import numpy
 import tensorflow
-import pandas as pd
+import os
 
 tensorflow.enable_eager_execution(config=tensorflow.ConfigProto(allow_soft_placement=True, gpu_options=tensorflow.GPUOptions(allow_growth=True)))
-
 tensorflow.logging.set_verbosity(tensorflow.logging.INFO)
 
-SPECIES = ['Setosa', 'Versicolor', 'Virginica']
-CSV_COLUMN_NAMES = ['SepalLength', 'SepalWidth', 'PetalLength', 'PetalWidth', 'Species']
+os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+model_dir = 'estimator_model/'
+batch_size = 128
+repeat = 10
+init_lr = 0.001
+decay_rate = 0.1
+total_data = 60000
+max_step = numpy.ceil(total_data * repeat / batch_size).astype(numpy.int32)
 
-batch_size = 100
-train_steps = 1000
+(train_image, train_label), (test_image, test_label) = tensorflow.keras.datasets.mnist.load_data()
+train_image = train_image.reshape(-1, 28, 28, 1).astype(numpy.float32)
+test_image = test_image.reshape(-1, 28, 28, 1).astype(numpy.float32)
+train_label = train_label.astype(numpy.int32)
+test_label = test_label.astype(numpy.int32)
 
-def load_data(y_name='Species'):
-    TRAIN_URL = "http://download.tensorflow.org/data/iris_training.csv"
-    TEST_URL = "http://download.tensorflow.org/data/iris_test.csv"
-    train_path = tensorflow.keras.utils.get_file(TRAIN_URL.split('/')[-1], TRAIN_URL)
-    test_path = tensorflow.keras.utils.get_file(TEST_URL.split('/')[-1], TEST_URL)
+def train_input_fn():
+    train_dataset = tensorflow.data.Dataset.from_tensor_slices((train_image, train_label)).shuffle(total_data).repeat(repeat).batch(batch_size).prefetch(batch_size)
+    return train_dataset
 
-    train = pd.read_csv(train_path, names=CSV_COLUMN_NAMES, header=0)
-    train_x, train_y = train, train.pop(y_name)
+def eval_input_fn():
+    test_dataset = tensorflow.data.Dataset.from_tensor_slices((test_image, test_label)).batch(batch_size).prefetch(batch_size)
+    return test_dataset
 
-    test = pd.read_csv(test_path, names=CSV_COLUMN_NAMES, header=0)
-    test_x, test_y = test, test.pop(y_name)
+def cnn_model_fn(features, labels, mode):
+    conv1 = tensorflow.layers.conv2d(
+        inputs=features,
+        filters=32,
+        kernel_size=[5, 5],
+        padding="same",
+        activation=tensorflow.nn.relu)
+    pool1 = tensorflow.layers.max_pooling2d(inputs=conv1, pool_size=[2, 2], strides=2)
 
-    return (train_x, train_y), (test_x, test_y)
+    conv2 = tensorflow.layers.conv2d(
+        inputs=pool1,
+        filters=64,
+        kernel_size=[5, 5],
+        padding="same",
+        activation=tensorflow.nn.relu)
+    pool2 = tensorflow.layers.max_pooling2d(inputs=conv2, pool_size=[2, 2], strides=2)
+    pool2_flat = tensorflow.reshape(pool2, [-1, 7 * 7 * 64])
 
-def train_input_fn(features, labels, batch_size):
-    """An input function for training"""
-    # Convert the inputs to a Dataset.
-    dataset = tensorflow.data.Dataset.from_tensor_slices((dict(features), labels))
+    dense = tensorflow.layers.dense(inputs=pool2_flat, units=1024, activation=tensorflow.nn.relu)
+    dropout = tensorflow.layers.dropout(inputs=dense, rate=0.4, training=mode == tensorflow.estimator.ModeKeys.TRAIN)
 
-    # Shuffle, repeat, and batch the examples.
-    dataset = dataset.shuffle(1000).repeat().batch(batch_size)
+    logits = tensorflow.layers.dense(inputs=dropout, units=10)
 
-    # Return the dataset.
-    return dataset
+    loss = tensorflow.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
 
-def eval_input_fn(features, labels, batch_size):
-    """An input function for evaluation or prediction"""
-    features=dict(features)
-    if labels is None:
-        # No labels, use only features.
-        inputs = features
-    else:
-        inputs = (features, labels)
+    predictions = {
+        "classes": tensorflow.argmax(input=logits, axis=1),
+        # Add `softmax_tensor` to the graph. It is used for PREDICT and by the `logging_hook`.
+        "probabilities": tensorflow.nn.softmax(logits, name="softmax_tensor")}
 
-    # Convert the inputs to a Dataset.
-    dataset = tensorflow.data.Dataset.from_tensor_slices(inputs)
+    if mode == tensorflow.estimator.ModeKeys.PREDICT:
+        return tensorflow.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
-    # Batch the examples
-    assert batch_size is not None, "batch_size must not be None"
-    dataset = dataset.batch(batch_size)
+    if mode == tensorflow.estimator.ModeKeys.TRAIN:
+        optimizer = tensorflow.train.GradientDescentOptimizer(learning_rate=0.001)
+        train_op = optimizer.minimize(loss=loss, global_step=tensorflow.train.get_global_step())
+        return tensorflow.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
 
-    # Return the dataset.
-    return dataset
+    if mode == tensorflow.estimator.ModeKeys.EVAL:
+        eval_metric_ops = {"accuracy": tensorflow.metrics.accuracy(labels=labels, predictions=predictions["classes"])}
+        return tensorflow.estimator.EstimatorSpec(mode=mode, loss=loss, eval_metric_ops=eval_metric_ops)
 
-def _parse_line(line):
-    # Decode the line into its fields
-    CSV_TYPES = [[0.0], [0.0], [0.0], [0.0], [0]]
-    fields = tensorflow.decode_csv(line, record_defaults=CSV_TYPES)
+mnist_classifier = tensorflow.estimator.Estimator(model_fn=cnn_model_fn, model_dir=model_dir)
 
-    # Pack the result into a dictionary
-    CSV_COLUMN_NAMES = ['SepalLength', 'SepalWidth', 'PetalLength', 'PetalWidth', 'Species']
-    features = dict(zip(CSV_COLUMN_NAMES, fields))
+logging_hook = tensorflow.estimator.LoggingTensorHook(tensors={"probabilities": "softmax_tensor"}, every_n_iter=1000)
 
-    # Separate the label from the features
-    label = features.pop('Species')
+mnist_classifier.train(input_fn=lambda: train_input_fn(), hooks=[logging_hook])
 
-    return features, label
-
-def csv_input_fn(csv_path, batch_size):
-    # Create a dataset containing the text lines.
-    dataset = tensorflow.data.TextLineDataset(csv_path).skip(1)
-
-    # Parse each line.
-    dataset = dataset.map(_parse_line)
-
-    # Shuffle, repeat, and batch the examples.
-    dataset = dataset.shuffle(1000).repeat().batch(batch_size)
-
-    # Return the dataset.
-    return dataset
-
-# Fetch the data
-(train_x, train_y), (test_x, test_y) = load_data()
-
-# Feature columns describe how to use the input.
-my_feature_columns = []
-for key in train_x.keys():
-    my_feature_columns.append(tensorflow.feature_column.numeric_column(key=key))
-
-# Build 2 hidden layer DNN with 10, 10 units respectively.
-classifier = tensorflow.estimator.DNNClassifier(
-    feature_columns=my_feature_columns,
-    # Two hidden layers of 10 nodes each.
-    hidden_units=[10, 10],
-    # The model must choose between 3 classes.
-    n_classes=3)
-
-# Train the Model.
-classifier.train(input_fn=lambda:train_input_fn(train_x, train_y, batch_size), steps=train_steps)
-
-# Evaluate the model.
-eval_result = classifier.evaluate(input_fn=lambda:eval_input_fn(test_x, test_y, batch_size))
-
-print('\nTest set accuracy: {accuracy:0.3f}\n'.format(**eval_result))
-
-# Generate predictions from the model
-expected = ['Setosa', 'Versicolor', 'Virginica']
-predict_x = {
-    'SepalLength': [5.1, 5.9, 6.9],
-    'SepalWidth': [3.3, 3.0, 3.1],
-    'PetalLength': [1.7, 4.2, 5.4],
-    'PetalWidth': [0.5, 1.5, 2.1]}
-
-predictions = classifier.predict(input_fn=lambda:eval_input_fn(predict_x, labels=None, batch_size=batch_size))
-
-for pred_dict, expec in zip(predictions, expected):
-    class_id = pred_dict['class_ids'][0]
-    probability = pred_dict['probabilities'][class_id]
-    print('\nPrediction is "{}" ({:.1f}%), expected "{}"'.format(SPECIES[class_id], 100 * probability, expec))
+eval_results = mnist_classifier.evaluate(input_fn=lambda: eval_input_fn())
+print(eval_results)
