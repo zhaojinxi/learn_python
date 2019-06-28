@@ -2,7 +2,7 @@ import tensorflow
 import sklearn.preprocessing
 import numpy
 
-tensorflow.enable_eager_execution()
+tensorflow.enable_eager_execution(config=tensorflow.ConfigProto(allow_soft_placement=True, gpu_options=tensorflow.GPUOptions(allow_growth=True)))
 
 log_train_dir = 'log_train/'
 log_test_dir = 'log_test/'

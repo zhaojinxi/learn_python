@@ -26,7 +26,7 @@ def load_data(y_name='Species'):
 
 def train_input_fn(features, labels, batch_size):
     dataset = tensorflow.data.Dataset.from_tensor_slices((dict(features), labels))
-    dataset = dataset.shuffle(1000).repeat().batch(batch_size)
+    dataset = dataset.shuffle(1000).repeat(10).batch(batch_size)
     return dataset
 
 def eval_input_fn(features, labels, batch_size):

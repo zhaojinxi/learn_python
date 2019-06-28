@@ -1,12 +1,11 @@
 import tensorflow
 import numpy
 import os
-import quant_model
+import train_with_quant_cnn_0
 
 os.environ["CUDA_VISIBLE_DEVICES"] = '0'
-log_dir = 'log/'
 model_dir = 'model/'
-batch_size = 64
+batch_size = 128
 repeat = 10
 init_lr = 0.001
 decay_rate = 0.1
@@ -16,8 +15,8 @@ max_step = numpy.ceil(total_data * repeat / batch_size).astype(numpy.int32)
 (train_image, train_label), (test_image, test_label) = tensorflow.keras.datasets.mnist.load_data()
 train_image = train_image.reshape(-1, 28, 28, 1).astype(numpy.float32)
 test_image = test_image.reshape(-1, 28, 28, 1).astype(numpy.float32)
-train_image = (train_image - 128) / 128
-test_image = (test_image - 128) / 128
+# train_image = (train_image - 128) / 128
+# test_image = (test_image - 128) / 128
 train_label = train_label.astype(numpy.int32)
 test_label = test_label.astype(numpy.int32)
 
@@ -27,17 +26,18 @@ training = tensorflow.placeholder(tensorflow.bool, name='training')
 global_step = tensorflow.train.get_or_create_global_step()
 learning_rate = tensorflow.train.exponential_decay(init_lr, global_step, max_step, decay_rate)
 
-logits = quant_model.cnn(input_image, training)
+logits = train_with_quant_cnn_0.cnn(input_image, training)
 
 test_predict = tensorflow.argmax(tensorflow.nn.softmax(logits), 1)
 
 loss = tensorflow.losses.sparse_softmax_cross_entropy(input_label, logits)
 
 g = tensorflow.get_default_graph()
-tensorflow.contrib.quantize.create_training_graph(input_graph=g, quant_delay=int(total_data / batch_size * repeat * 0.9))
+tensorflow.contrib.quantize.create_training_graph(input_graph=g, quant_delay=int(total_data / batch_size * repeat * 0.8))
 
 with tensorflow.control_dependencies(tensorflow.get_collection(tensorflow.GraphKeys.UPDATE_OPS)):
-    minimize = tensorflow.contrib.opt.NadamOptimizer(learning_rate).minimize(loss, global_step=global_step, name='minimize')
+    # minimize = tensorflow.contrib.opt.NadamOptimizer(learning_rate).minimize(loss, global_step=global_step, name='minimize')
+    minimize = tensorflow.train.GradientDescentOptimizer(learning_rate=init_lr).minimize(loss, global_step=global_step, name='minimize')
 
 test_accuracy = tensorflow.reduce_mean(tensorflow.cast(tensorflow.equal(tensorflow.cast(test_predict, tensorflow.int32), input_label), tensorflow.float32))
 
@@ -49,10 +49,10 @@ Saver = tensorflow.train.Saver(max_to_keep=1)
 Session = tensorflow.Session()
 Session.run(tensorflow.global_variables_initializer())
 
-FileWriter = tensorflow.summary.FileWriter(log_dir, Session.graph)
+FileWriter = tensorflow.summary.FileWriter(model_dir, Session.graph)
 
 num = total_data // batch_size
-for i in range(max_step):
+for i in range(max_step + 1):
     if Session.run(global_step) % int(total_data / batch_size) == 0:
         summary = Session.run(merge_all, feed_dict={input_image: test_image, input_label: test_label, training: False})
         FileWriter.add_summary(summary, Session.run(global_step))
