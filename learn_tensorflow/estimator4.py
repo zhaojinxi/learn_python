@@ -10,10 +10,10 @@ train_image = (train_image - 127.5) / 128
 mnist_ds = tensorflow.data.Dataset.from_tensor_slices((train_image)).batch(1)
 
 def representative_data_gen():
-  for input_value in mnist_ds.take(6000):
+  for input_value in mnist_ds.take(60000):
     yield [input_value]
 
-converter = tensorflow.lite.TFLiteConverter.from_saved_model('estimator_model/1561917277')
+converter = tensorflow.lite.TFLiteConverter.from_saved_model('estimator_model/1561918371')
 #设置是否量化权重
 converter.optimizations = [tensorflow.lite.Optimize.DEFAULT]
 #设置是否量化激活
