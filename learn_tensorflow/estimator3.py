@@ -21,7 +21,11 @@ test_image = (test_image - 127.5) / 128
 train_label = train_label.astype(numpy.int32)
 test_label = test_label.astype(numpy.int32)
 
-_TENSORS_TO_LOG = dict((x, x) for x in ['learning_rate', 'cross_entropy', 'train_accuracy'])
+_TENSORS_TO_LOG = dict((x, x) for x in [
+    'learning_rate',
+    'cross_entropy',
+    'train_accuracy'
+    ])
 
 def create_model():
     model = tensorflow.keras.Sequential([
@@ -65,6 +69,7 @@ def model_fn(features, labels, mode, params):
 
         # Save accuracy scalar to Tensorboard output.
         tensorflow.summary.scalar('train_accuracy', accuracy[1])
+        tensorflow.summary.scalar('loss', loss)
 
         return tensorflow.estimator.EstimatorSpec(
             mode=tensorflow.estimator.ModeKeys.TRAIN,
