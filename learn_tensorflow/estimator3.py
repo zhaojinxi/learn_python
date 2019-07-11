@@ -30,12 +30,18 @@ _TENSORS_TO_LOG = dict((x, x) for x in [
 def create_model():
     model = tensorflow.keras.Sequential([
             tensorflow.keras.layers.Reshape(target_shape=[28, 28, 1], input_shape=(28 * 28,)),
-            tensorflow.keras.layers.Conv2D(32, 5, padding='same', activation=tensorflow.nn.relu),
+            tensorflow.keras.layers.Conv2D(32, 5, padding='same'),
+            tensorflow.keras.layers.BatchNormalization(),
+            tensorflow.keras.layers.PReLU(shared_axes=[1, 2]),
             tensorflow.keras.layers.MaxPooling2D((2, 2), (2, 2), padding='same'),
-            tensorflow.keras.layers.Conv2D(64, 5, padding='same', activation=tensorflow.nn.relu),
+            tensorflow.keras.layers.Conv2D(64, 5, padding='same'),
+            tensorflow.keras.layers.BatchNormalization(),
+            tensorflow.keras.layers.PReLU(shared_axes=[1, 2]),
             tensorflow.keras.layers.MaxPooling2D((2, 2), (2, 2), padding='same'),
             tensorflow.keras.layers.Flatten(),
-            tensorflow.keras.layers.Dense(1024, activation=tensorflow.nn.relu),
+            tensorflow.keras.layers.Dense(1024),
+            tensorflow.keras.layers.BatchNormalization(),
+            tensorflow.keras.layers.PReLU(),
             tensorflow.keras.layers.Dropout(0.4),
             tensorflow.keras.layers.Dense(10)])
     return model
@@ -273,4 +279,3 @@ if True:
     image = tensorflow.placeholder(tensorflow.float32, [None, 28, 28])
     input_fn = tensorflow.estimator.export.build_raw_serving_input_receiver_fn({'image': image})
     mnist_classifier.export_saved_model(model_dir, input_fn, as_text=True)
-    # mnist_classifier.export_savedmodel(model_dir, input_fn, as_text=True, strip_default_attrs=True)
