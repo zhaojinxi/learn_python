@@ -6,7 +6,7 @@ tensorflow.logging.set_verbosity(tensorflow.logging.INFO)
 
 os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 model_dir = 'estimator_model/'
-batch_size = 128
+batch_size = 256
 repeat = 10
 init_lr = 0.001
 decay_rate = 0.1
@@ -52,9 +52,9 @@ def model_fn(features, labels, mode, params):
     image = features
     if isinstance(image, dict):
         image = features['image']
-    logits = model(image)
-    
+
     if mode == tensorflow.estimator.ModeKeys.PREDICT:
+        logits = model(image, training=False)
         predictions = {'classes': tensorflow.argmax(logits, axis=1), 'probabilities': tensorflow.nn.softmax(logits)}
         return tensorflow.estimator.EstimatorSpec(
             mode=tensorflow.estimator.ModeKeys.PREDICT,
@@ -62,6 +62,7 @@ def model_fn(features, labels, mode, params):
             export_outputs={'classify': tensorflow.estimator.export.PredictOutput(predictions)})
 
     if mode == tensorflow.estimator.ModeKeys.TRAIN:
+        logits = model(image, training=True)
         optimizer = tensorflow.train.AdamOptimizer(learning_rate=init_lr)
 
         loss = tensorflow.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
@@ -76,17 +77,22 @@ def model_fn(features, labels, mode, params):
         tensorflow.summary.scalar('train_accuracy', accuracy[1])
         tensorflow.summary.scalar('loss', loss)
 
+        with tensorflow.control_dependencies(model.get_updates_for(features)):
+            train_op = optimizer.minimize(loss, tensorflow.train.get_or_create_global_step())
+
         return tensorflow.estimator.EstimatorSpec(
             mode=tensorflow.estimator.ModeKeys.TRAIN,
             loss=loss,
-            train_op=optimizer.minimize(loss, tensorflow.train.get_or_create_global_step()))
+            train_op=train_op)
 
     if mode == tensorflow.estimator.ModeKeys.EVAL:
+        logits = model(image, training=False)
+        tensorflow.print(model.variables)
         loss = tensorflow.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
         return tensorflow.estimator.EstimatorSpec(
             mode=tensorflow.estimator.ModeKeys.EVAL,
             loss=loss,
-            eval_metric_ops={'accuracy': tensorflow.metrics.accuracy(labels=labels, predictions=tensorflow.argmax(logits, axis=1))})
+            eval_metric_ops={'test_accuracy': tensorflow.metrics.accuracy(labels=labels, predictions=tensorflow.argmax(logits, axis=1))})
 
 def get_distribution_strategy(distribution_strategy="default", num_gpus=0, num_workers=1, all_reduce_alg=None, num_packs=1):
     """Return a DistributionStrategy for running the model.
@@ -273,7 +279,6 @@ mnist_classifier.train(input_fn=train_input_fn, hooks=train_hooks)
 eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
 print('\nEvaluation results:\n\t%s\n' % eval_results)
 
-if True:
-    image = tensorflow.placeholder(tensorflow.float32, [None, 28, 28])
-    input_fn = tensorflow.estimator.export.build_raw_serving_input_receiver_fn({'image': image})
-    mnist_classifier.export_saved_model(model_dir, input_fn, as_text=True)
+image = tensorflow.placeholder(tensorflow.float32, [None, 28, 28])
+input_fn = tensorflow.estimator.export.build_raw_serving_input_receiver_fn({'image': image})
+mnist_classifier.export_saved_model(model_dir, input_fn, as_text=True)

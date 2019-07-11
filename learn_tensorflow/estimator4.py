@@ -13,11 +13,11 @@ def representative_data_gen():
   for input_value in mnist_ds.take(60000):
     yield [input_value]
 
-converter = tensorflow.lite.TFLiteConverter.from_saved_model('estimator_model/1561918371')
+converter = tensorflow.lite.TFLiteConverter.from_saved_model('estimator_model/1562834322')
 #设置是否量化权重
 converter.optimizations = [tensorflow.lite.Optimize.DEFAULT]
 #设置是否量化激活
-converter.representative_dataset = representative_data_gen
+# converter.representative_dataset = representative_data_gen
 #设置是否仅支持整数量化
 # converter.target_spec = [tensorflow.lite.OpsSet.TFLITE_BUILTINS_INT8]
 tflite_model = converter.convert()
