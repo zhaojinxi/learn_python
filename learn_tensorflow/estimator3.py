@@ -52,9 +52,9 @@ def model_fn(features, labels, mode, params):
     image = features
     if isinstance(image, dict):
         image = features['image']
-
+    logits = model(image)
+    
     if mode == tensorflow.estimator.ModeKeys.PREDICT:
-        logits = model(image, training=False)
         predictions = {'classes': tensorflow.argmax(logits, axis=1), 'probabilities': tensorflow.nn.softmax(logits)}
         return tensorflow.estimator.EstimatorSpec(
             mode=tensorflow.estimator.ModeKeys.PREDICT,
@@ -64,7 +64,6 @@ def model_fn(features, labels, mode, params):
     if mode == tensorflow.estimator.ModeKeys.TRAIN:
         optimizer = tensorflow.train.AdamOptimizer(learning_rate=init_lr)
 
-        logits = model(image, training=True)
         loss = tensorflow.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
         accuracy = tensorflow.metrics.accuracy(labels=labels, predictions=tensorflow.argmax(logits, axis=1))
 
@@ -83,7 +82,6 @@ def model_fn(features, labels, mode, params):
             train_op=optimizer.minimize(loss, tensorflow.train.get_or_create_global_step()))
 
     if mode == tensorflow.estimator.ModeKeys.EVAL:
-        logits = model(image, training=False)
         loss = tensorflow.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
         return tensorflow.estimator.EstimatorSpec(
             mode=tensorflow.estimator.ModeKeys.EVAL,
