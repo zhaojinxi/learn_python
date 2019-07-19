@@ -1,7 +1,7 @@
 import tensorflow
 import numpy
 import os
-import train_with_quant_cnn_0
+import quantize_train_cnn_0
 
 os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 model_dir = 'model/'
@@ -9,7 +9,7 @@ model_dir = 'model/'
 input_image = tensorflow.placeholder(tensorflow.float32, [None, 28, 28, 1], name='input_image')
 input_label = tensorflow.placeholder(tensorflow.int32, [None], name='input_label')
 
-logits = train_with_quant_cnn_0.cnn(input_image, False)
+logits = quantize_train_cnn_0.cnn(input_image, False)
 
 test_predict = tensorflow.argmax(tensorflow.nn.softmax(logits), 1)
 
