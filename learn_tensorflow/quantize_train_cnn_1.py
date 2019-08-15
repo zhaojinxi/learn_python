@@ -1,7 +1,7 @@
 import tensorflow
 import numpy
 import os
-import train_with_quant_cnn_0
+import quantize_train_cnn_0
 
 os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 model_dir = 'model/'
@@ -26,7 +26,7 @@ training = tensorflow.placeholder(tensorflow.bool, name='training')
 global_step = tensorflow.train.get_or_create_global_step()
 learning_rate = tensorflow.train.exponential_decay(init_lr, global_step, max_step, decay_rate)
 
-logits = train_with_quant_cnn_0.cnn(input_image, training)
+logits = quantize_train_cnn_0.cnn(input_image, training)
 
 test_predict = tensorflow.argmax(tensorflow.nn.softmax(logits), 1)
 

@@ -54,6 +54,7 @@ def model_fn(features, labels, mode, params):
         image = features['image']
 
     if mode == tensorflow.estimator.ModeKeys.PREDICT:
+        # tensorflow.keras.backend.set_learning_phase(False)
         logits = model(image, training=False)
         predictions = {'classes': tensorflow.argmax(logits, axis=1), 'probabilities': tensorflow.nn.softmax(logits)}
         return tensorflow.estimator.EstimatorSpec(
@@ -62,6 +63,7 @@ def model_fn(features, labels, mode, params):
             export_outputs={'classify': tensorflow.estimator.export.PredictOutput(predictions)})
 
     if mode == tensorflow.estimator.ModeKeys.TRAIN:
+        # tensorflow.keras.backend.set_learning_phase(True)
         logits = model(image, training=True)
         optimizer = tensorflow.train.AdamOptimizer(learning_rate=init_lr)
 
@@ -78,6 +80,7 @@ def model_fn(features, labels, mode, params):
         tensorflow.summary.scalar('loss', loss)
 
         with tensorflow.control_dependencies(model.get_updates_for(features)):
+        # with tensorflow.control_dependencies(model.updates):
             train_op = optimizer.minimize(loss, tensorflow.train.get_or_create_global_step())
 
         return tensorflow.estimator.EstimatorSpec(
@@ -86,6 +89,7 @@ def model_fn(features, labels, mode, params):
             train_op=train_op)
 
     if mode == tensorflow.estimator.ModeKeys.EVAL:
+        # tensorflow.keras.backend.set_learning_phase(False)
         logits = model(image, training=False)
         tensorflow.print(model.variables)
         loss = tensorflow.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
