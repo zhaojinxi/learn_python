@@ -19,6 +19,7 @@
     "editor.renderControlCharacters": true,
     "editor.renderLineHighlight": "all",
     "editor.cursorSmoothCaretAnimation": true,
+    "editor.suggestSelection": "first",
 
     "files.trimTrailingWhitespace": true,
     "files.trimFinalNewlines": true,
@@ -33,10 +34,11 @@
     "python.linting.enabled": false,
     "python.linting.pylintEnabled": false,
     "python.globalModuleInstallation": true,
-    "python.formatting.autopep8Args": [
-        "W391",
-        "E402",
-        "E501"
-    ],
+    "python.formatting.autopep8Args": ["W391","E402","E501"],
     "python.dataScience.changeDirOnImportExport": false,
+    "python.testing.pytestEnabled": false,
+
+    "remote.SSH.showLoginTerminal": true,
+
+    "vsintellicode.modify.editor.suggestSelection": "automaticallyOverrodeDefaultValue",
 }
