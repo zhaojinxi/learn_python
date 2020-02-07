@@ -36,6 +36,7 @@
     "python.globalModuleInstallation": true,
     "python.formatting.autopep8Args": ["W391","E402","E501"],
     "python.dataScience.changeDirOnImportExport": false,
+    "python.dataScience.debugJustMyCode": false,
     "python.testing.pytestEnabled": false,
 
     "remote.SSH.showLoginTerminal": true,
