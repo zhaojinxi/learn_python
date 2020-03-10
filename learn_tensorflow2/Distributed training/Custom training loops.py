@@ -1,29 +1,21 @@
-# Import TensorFlow
-import tensorflow as tf
-# Helper libraries
-import numpy as np
 import os
+import numpy
+import tensorflow
 
-print(tf.__version__)
+print(tensorflow.__version__)
 
-fashion_mnist = tf.keras.datasets.fashion_mnist
+fashion_mnist = tensorflow.keras.datasets.fashion_mnist
 
 (train_images, train_labels), (test_images, test_labels) = fashion_mnist.load_data()
 
-# Adding a dimension to the array -> new shape == (28, 28, 1)
-# We are doing this because the first layer in our model is a convolutional
-# layer and it requires a 4D input (batch_size, height, width, channels).
-# batch_size dimension will be added later on.
 train_images = train_images[..., None]
 test_images = test_images[..., None]
 
-# Getting the images in [0, 1] range.
-train_images = train_images / np.float32(255)
-test_images = test_images / np.float32(255)
+train_images = train_images / numpy.float32(255)
+test_images = test_images / numpy.float32(255)
 
-# If the list of devices is not specified in the
-# `tf.distribute.MirroredStrategy` constructor, it will be auto-detected.
-strategy = tf.distribute.MirroredStrategy()
+# If the list of devices is not specified in the `tensorflow.distribute.MirroredStrategy` constructor, it will be auto-detected.
+strategy = tensorflow.distribute.MirroredStrategy()
 
 print('Number of devices: {}'.format(strategy.num_replicas_in_sync))
 
@@ -34,23 +26,21 @@ GLOBAL_BATCH_SIZE = BATCH_SIZE_PER_REPLICA * strategy.num_replicas_in_sync
 
 EPOCHS = 10
 
-train_dataset = tf.data.Dataset.from_tensor_slices((train_images, train_labels)).shuffle(BUFFER_SIZE).batch(GLOBAL_BATCH_SIZE)
-test_dataset = tf.data.Dataset.from_tensor_slices((test_images, test_labels)).batch(GLOBAL_BATCH_SIZE)
+train_dataset = tensorflow.data.Dataset.from_tensor_slices((train_images, train_labels)).shuffle(BUFFER_SIZE).batch(GLOBAL_BATCH_SIZE)
+test_dataset = tensorflow.data.Dataset.from_tensor_slices((test_images, test_labels)).batch(GLOBAL_BATCH_SIZE)
 
 train_dist_dataset = strategy.experimental_distribute_dataset(train_dataset)
 test_dist_dataset = strategy.experimental_distribute_dataset(test_dataset)
 
 def create_model():
-    model = tf.keras.Sequential([
-            tf.keras.layers.Conv2D(32, 3, activation='relu'),
-            tf.keras.layers.MaxPooling2D(),
-            tf.keras.layers.Conv2D(64, 3, activation='relu'),
-            tf.keras.layers.MaxPooling2D(),
-            tf.keras.layers.Flatten(),
-            tf.keras.layers.Dense(64, activation='relu'),
-            tf.keras.layers.Dense(10, activation='softmax')
-        ])
-
+    model = tensorflow.keras.Sequential([
+            tensorflow.keras.layers.Conv2D(32, 3, activation='relu'),
+            tensorflow.keras.layers.MaxPooling2D(),
+            tensorflow.keras.layers.Conv2D(64, 3, activation='relu'),
+            tensorflow.keras.layers.MaxPooling2D(),
+            tensorflow.keras.layers.Flatten(),
+            tensorflow.keras.layers.Dense(64, activation='relu'),
+            tensorflow.keras.layers.Dense(10)])
     return model
 
 # Create a checkpoint directory to store the checkpoints.
@@ -59,31 +49,27 @@ checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
 
 with strategy.scope():
     # Set reduction to `none` so we can do the reduction afterwards and divide by global batch size.
-    loss_object = tf.keras.losses.SparseCategoricalCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
-    # or loss_fn = tf.keras.losses.sparse_categorical_crossentropy
+    loss_object = tensorflow.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction=tensorflow.keras.losses.Reduction.NONE)
     def compute_loss(labels, predictions):
         per_example_loss = loss_object(labels, predictions)
-        return tf.nn.compute_average_loss(per_example_loss, global_batch_size=GLOBAL_BATCH_SIZE)
+        return tensorflow.nn.compute_average_loss(per_example_loss, global_batch_size=GLOBAL_BATCH_SIZE)
 
 with strategy.scope():
-    test_loss = tf.keras.metrics.Mean(name='test_loss')
-
-    train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='train_accuracy')
-    test_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='test_accuracy')
+    test_loss = tensorflow.keras.metrics.Mean(name='test_loss')
+    train_accuracy = tensorflow.keras.metrics.SparseCategoricalAccuracy(name='train_accuracy')
+    test_accuracy = tensorflow.keras.metrics.SparseCategoricalAccuracy(name='test_accuracy')
 
 # model and optimizer must be created under `strategy.scope`.
 with strategy.scope():
     model = create_model()
-
-    optimizer = tf.keras.optimizers.Adam()
-
-    checkpoint = tf.train.Checkpoint(optimizer=optimizer, model=model)
+    optimizer = tensorflow.keras.optimizers.Adam()
+    checkpoint = tensorflow.train.Checkpoint(optimizer=optimizer, model=model)
 
 with strategy.scope():
     def train_step(inputs):
         images, labels = inputs
 
-        with tf.GradientTape() as tape:
+        with tensorflow.GradientTape() as tape:
             predictions = model(images, training=True)
             loss = compute_loss(labels, predictions)
 
@@ -105,12 +91,12 @@ with strategy.scope():
 with strategy.scope():
     # `experimental_run_v2` replicates the provided computation and runs it
     # with the distributed input.
-    @tf.function
+    @tensorflow.function
     def distributed_train_step(dataset_inputs):
         per_replica_losses = strategy.experimental_run_v2(train_step, args=(dataset_inputs,))
-        return strategy.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
+        return strategy.reduce(tensorflow.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
 
-    @tf.function
+    @tensorflow.function
     def distributed_test_step(dataset_inputs):
         return strategy.experimental_run_v2(test_step, args=(dataset_inputs,))
 
@@ -131,26 +117,26 @@ with strategy.scope():
             checkpoint.save(checkpoint_prefix)
 
         template = ("Epoch {}, Loss: {}, Accuracy: {}, Test Loss: {}, Test Accuracy: {}")
-        print(template.format(epoch + 1, train_loss, train_accuracy.result() * 100, test_loss.result(), test_accuracy.result() * 100))
+        print (template.format(epoch+1, train_loss, train_accuracy.result()*100, test_loss.result(), test_accuracy.result()*100))
 
         test_loss.reset_states()
         train_accuracy.reset_states()
         test_accuracy.reset_states()
 
-eval_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name='eval_accuracy')
+eval_accuracy = tensorflow.keras.metrics.SparseCategoricalAccuracy(name='eval_accuracy')
 
 new_model = create_model()
-new_optimizer = tf.keras.optimizers.Adam()
+new_optimizer = tensorflow.keras.optimizers.Adam()
 
-test_dataset = tf.data.Dataset.from_tensor_slices((test_images, test_labels)).batch(GLOBAL_BATCH_SIZE)
+test_dataset = tensorflow.data.Dataset.from_tensor_slices((test_images, test_labels)).batch(GLOBAL_BATCH_SIZE)
 
-@tf.function
+@tensorflow.function
 def eval_step(images, labels):
     predictions = new_model(images, training=False)
     eval_accuracy(labels, predictions)
 
-checkpoint = tf.train.Checkpoint(optimizer=new_optimizer, model=new_model)
-checkpoint.restore(tf.train.latest_checkpoint(checkpoint_dir))
+checkpoint = tensorflow.train.Checkpoint(optimizer=new_optimizer, model=new_model)
+checkpoint.restore(tensorflow.train.latest_checkpoint(checkpoint_dir))
 
 for images, labels in test_dataset:
     eval_step(images, labels)
@@ -173,15 +159,15 @@ with strategy.scope():
         train_accuracy.reset_states()
 
 with strategy.scope():
-    @tf.function
+    @tensorflow.function
     def distributed_train_epoch(dataset):
         total_loss = 0.0
         num_batches = 0
         for x in dataset:
             per_replica_losses = strategy.experimental_run_v2(train_step, args=(x,))
-            total_loss += strategy.reduce(tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
+            total_loss += strategy.reduce(tensorflow.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
             num_batches += 1
-        return total_loss / tf.cast(num_batches, dtype=tf.float32)
+        return total_loss / tensorflow.cast(num_batches, dtype=tensorflow.float32)
 
     for epoch in range(EPOCHS):
         train_loss = distributed_train_epoch(train_dist_dataset)
