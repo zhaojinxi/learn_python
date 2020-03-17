@@ -16,7 +16,6 @@ def get_data():
     def scale(image, label):
         image = tf.cast(image, tf.float32)
         image /= 255
-
         return image, label
 
     train_dataset = mnist_train.map(scale).cache().shuffle(BUFFER_SIZE).batch(BATCH_SIZE)
@@ -31,17 +30,17 @@ def get_model():
                 tf.keras.layers.MaxPooling2D(),
                 tf.keras.layers.Flatten(),
                 tf.keras.layers.Dense(64, activation='relu'),
-                tf.keras.layers.Dense(10, activation='softmax')])
+                tf.keras.layers.Dense(10)])
 
-        model.compile(loss='sparse_categorical_crossentropy', optimizer=tf.keras.optimizers.Adam(), metrics=['accuracy'])
+        model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True), optimizer=tf.keras.optimizers.Adam(), metrics=['accuracy'])
         return model
 
 model = get_model()
 train_dataset, eval_dataset = get_data()
 model.fit(train_dataset, epochs=2)
 
-keras_model_path = "keras_save/"
-model.save(keras_model_path)  # save() should be called out of strategy scope
+keras_model_path = "/tmp/keras_save"
+model.save(keras_model_path)    # save() should be called out of strategy scope
 
 restored_keras_model = tf.keras.models.load_model(keras_model_path)
 restored_keras_model.fit(train_dataset, epochs=2)
@@ -52,7 +51,7 @@ with another_strategy.scope():
     restored_keras_model_ds.fit(train_dataset, epochs=2)
 
 model = get_model()  # get a fresh model
-saved_model_path = "tf_save/"
+saved_model_path = "/tmp/tf_save"
 tf.saved_model.save(model, saved_model_path)
 
 DEFAULT_FUNCTION_KEY = "serving_default"
@@ -72,7 +71,7 @@ with another_strategy.scope():
 
     # Calling the function in a distributed manner
     for batch in dist_predict_dataset:
-        another_strategy.experimental_run_v2(inference_func, args=(batch,))
+        another_strategy.run(inference_func, args=(batch,))
 
 import tensorflow_hub as hub
 
@@ -88,7 +87,7 @@ with another_strategy.scope():
     loaded = tf.saved_model.load(saved_model_path)
     model = build_model(loaded)
 
-    model.compile(loss='sparse_categorical_crossentropy', optimizer=tf.keras.optimizers.Adam(), metrics=['accuracy'])
+    model.compile(loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True), optimizer=tf.keras.optimizers.Adam(), metrics=['accuracy'])
     model.fit(train_dataset, epochs=2)
 
 model = get_model()
@@ -102,10 +101,13 @@ with another_strategy.scope():
     loaded = tf.saved_model.load(keras_model_path)
 
 class SubclassedModel(tf.keras.Model):
+
     output_name = 'output_layer'
+
     def __init__(self):
         super(SubclassedModel, self).__init__()
-        self._dense_layer = tf.keras.layers.Dense(5, dtype=tf.dtypes.float32, name=self.output_name)
+        self._dense_layer = tf.keras.layers.Dense(
+                5, dtype=tf.dtypes.float32, name=self.output_name)
 
     def call(self, inputs):
         return self._dense_layer(inputs)
